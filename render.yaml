@@ -1,0 +1,20 @@
+# Render blueprint (free web service). Secrets are set in the Render dashboard, never here.
+services:
+  - type: web
+    name: lio-launch-control
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: LIO_PORTAL_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: LIO_AI_MODEL
+        value: gpt-5.5
+      - key: LIO_ACCESS_CODE
+        sync: false
+      - key: LIO_ALLOWED_HOSTS
+        sync: false
+      - key: LIO_EMAIL_ENABLED
+        value: "false"

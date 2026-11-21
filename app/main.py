@@ -82,8 +82,12 @@ def issue_detail(issue_id):
 
 
 async def poll():
+    # A fresh host (e.g. ephemeral disk after a restart) has no data yet: sync at once instead of after one interval.
+    wait = config.DATA_DIR.is_dir() or not config.PORTAL_TOKEN
     while True:
-        await asyncio.sleep(config.POLL_SECONDS)
+        if wait:
+            await asyncio.sleep(config.POLL_SECONDS)
+        wait = True
         try:
             await asyncio.to_thread(refresh, bool(config.PORTAL_TOKEN))
             if config.integrations()['inbox_enabled']:

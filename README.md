@@ -1,97 +1,129 @@
-# Lio Launch Rescue
+# Launch Control (Lio Launch Rescue)
 
-Local working prototype for START Hack Munich 2026. Reconcile Soony's actual source files, investigate the GH6 game-card short shipment, and prepare a supplier inquiry with evidence, approval and persistent history.
+START Hack Munich 2026, Lio challenge "Keep the Line Running".
+
+## Problem
+
+Soony launches GH6. The trucks leave Hamburg on Sunday at 20:00. Soony's own plan sheet shows the game cards as "ok", with 13,200 cards to spare. They are not ok. The game-card supplier shipped 28,000 of 48,000 (the rest lands after launch), and packing has used cards since the plan was made. Launch Control finds that 6,800 Standard copies will not ship on time. Collector's Edition comes first, as the CPO memo requires. This gap is only visible when POs, ERP stock, the plan, packing status, supplier notices, contracts and memos are read together, and they disagree in 10 places (current data).
+
+## What it does
+
+- Reads Soony's messy files (PDF, DOCX, XLSX, CSV; the newest file wins), works out the real shortfall and lists where the records conflict.
+- Finds Plan B options nobody asked about. For example, a second supplier has 36,000 cards packed and on hold at its dock until delivery terms are confirmed. That is 5.3 times the gap. Their arrival time is unknown, and the app says so.
+- Prices each option where it can (or shows "unknown"), routes the decision to the approver named in Soony's approval policy, and drafts the supplier message and the internal escalation.
+- A what-if slider shows how many copies still ship if the parts arrive in N hours. This is a scenario, not a confirmed delivery.
+- An agent (OpenAI Responses API, model set by env) picks its own tools across several turns, within fixed limits. Code checks every tool call. Without a model, a fixed rule-based order runs and is labelled `rule_based`.
+
+## Human approval model
+
+- The agent can read, compute and draft. Sending, ordering, booking freight, paying, approving and changing stock are not tools at all. If the model asks for one, the call is rejected and logged.
+- A named person approves each draft in two steps (read it, then type a name). The internal escalation needs its own separate approval. Approval is tied to the evidence: if the source files change, the approval is cancelled.
+- Approval in this app covers the displayed draft only. It does not replace Soony's authorised approver, a PO or a quality concession.
+- Email sending is off by default. An optional guarded SMTP send exists only for an approved inquiry whose evidence has not changed. It needs `LIO_EMAIL_ENABLED=true` and a verified recipient. If SMTP fails or the result is unclear, the app does not retry automatically. SMTP acceptance does not mean the supplier confirmed anything.
+
+Verified on 21 Nov 2026: `python -m pytest -q` gave 349 passed, 1 skipped. A live gpt-5.5 agent run finished in run mode `agent` with 12 tool calls, 0 rejected, in about 31 s. It stopped at `awaiting_human_review` and sent no email.
 
 ## Run
 
-Python 3.11+ required. In PowerShell from this repository:
+Python 3.11+. Windows PowerShell, from the repository root:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Copy-Item .env.example .env
+Copy-Item .env.example .env   # skip if you already have a .env
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Preserve an existing .env instead of copying over it. Open http://127.0.0.1:8000. Interactive API docs are disabled. Bind to loopback for local use; the optional shared access code is described below.
+On any other OS:
 
-Download the authorized portal archive and extract it to data/soony-data/soony/ and data/soony-data/suppliers/. Each teammate obtains their own authorized copy. Customer data is excluded from Git. Fresh clones show missing-data warnings until inputs are supplied.
+```sh
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
 
-## Working now
+Open http://127.0.0.1:8000. Customer data is not in the repository. With `LIO_PORTAL_TOKEN` set, the service downloads the authorised portal archive into `LIO_DATA_DIR` and checks it every 60 seconds. Without the token, it shows missing-data warnings.
 
-- Source-derived launch requirements, stock, short-shipment reconciliation and prioritized cases.
-- Game-card case uses supplier PDF quantity rows and PO/material/AWB matching, not copied outcome constants.
-- Provisional art-book over-receipt estimate, statue quality exclusion, magnet BOM review.
-- Server-side source evidence, explicit uncertainty and recovery constraints.
-- Portal polling every 60 seconds with SHA-256 validation, cached downloads, removal quarantine and visible failure state.
-- Persistent SQLite drafts, named inquiry approval, stale-evidence invalidation and guarded SMTP transport.
-- Optional model investigation with read-only issue/search/document tools and action history.
-- A role-based agent crew, policy routing, checked quantities, separate supplier and internal drafts, and an arrival-time packing simulator.
+The built UI is already in `app/static/`. Rebuild it only after changing `frontend/`:
 
-## Connections
+```powershell
+cd frontend; npm ci; npm run build
+```
 
-All secrets belong in ignored .env, never source or browser JavaScript.
+## Test
 
-| Connection | Configuration | Behavior |
-| --- | --- | --- |
-| Portal | LIO_PORTAL_TOKEN from Settings | Manual check or automatic checksum polling |
-| AI | OPENAI_API_KEY and LIO_AI_MODEL | Explicit Run AI investigation sends relevant source text to OpenAI |
-| Email | SMTP settings, LIO_EMAIL_ENABLED=true, verified recipient | Sends only the reviewed, approved availability inquiry |
+```powershell
+python -m pytest -q                          # backend; synthetic inputs, model/SMTP/network blocked
+cd frontend; npm test; npm run typecheck     # vitest + TypeScript
+```
 
-Model investigation uses the [OpenAI Responses API](https://developers.openai.com/api/reference/resources/responses/methods/create). It cannot send email, order goods or approve spending. Deterministic reconciliation owns quantities. Each installation needs its own credentials; the UI reports available connections. Allocation of existing stock adds no new supply and never counts as recovered copies.
+The tests never use customer files and never call the real model or send email.
 
-LIO_GAME_CARD_RECIPIENT and LIO_ART_BOOK_RECIPIENT must contain verified hackathon inboxes. Register the sender in portal Settings first. Documents cannot change configured recipients. No supplier email has been sent during development.
+## Deployment
 
-Approval here authorizes the displayed inquiry only. It does not authenticate a person's identity, approve a PO, grant a quality concession or replace Soony's PP-07 policy. SMTP acceptance is not supplier confirmation. Ambiguous delivery blocks automatic retry: check sent mail first.
+The repository has a `Dockerfile` (single uvicorn worker, proxy headers on, no customer data in the image) and a `render.yaml` blueprint for the Render free tier. Secrets go in the Render dashboard. Deployment is not live yet. The URL and the access code will be in the hand-in note.
 
-## Privacy and access
+## Environment variables
 
-The browser never receives source documents, file names, paths or excerpts. One filter layer (app/public.py) allowlists every API response; raw evidence, tool traces and model transcripts stay on the server. Agent steps are shown as generic labels only.
+All secrets go in the git-ignored `.env` (or the host's secret store). They never go in source code or browser code.
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| LIO_ACCESS_CODE | unset (no login) | When set, every page and API call except /login, /api/login, /api/health and the login assets needs a signed 12-hour cookie. 5 wrong tries per client in 5 minutes and 30 in 10 minutes across all clients return 429. Set it before any non-local hosting; the service refuses to start if LIO_ALLOWED_HOSTS is set without it. Logout revokes the cookie and sessions end on restart. |
-| LIO_EXPOSE_SOURCES | off | Only `true` re-enables /api/evidence (raw customer files). Local debugging only; never set it on a hosted copy. |
-| LIO_ALLOWED_HOSTS | unset | Comma-separated extra Host names accepted besides localhost, 127.0.0.1 and testserver. |
-| LIO_COOKIE_SECURE | unset | `true` forces the Secure flag on the session cookie. It is also set automatically on https or X-Forwarded-Proto https. |
+| LIO_PORTAL_TOKEN | unset | Portal download and checksum polling (`LIO_POLL_SECONDS`, default 60). |
+| OPENAI_API_KEY, LIO_AI_MODEL | unset | Turns on the model-driven agent. `LIO_AGENT_MODEL` overrides the model for the agent loop. Relevant source text is sent to OpenAI only when you run the agent. |
+| LIO_ACCESS_CODE | unset (no login) | Every page and API call except /login, /api/login, /api/health and the login assets needs a signed 12-hour cookie. Too many wrong attempts return 429: 5 per client in 5 minutes, or 30 across all clients in 10 minutes. Logout revokes the cookie, and all sessions end when the service restarts. Required for any hosted copy. |
+| LIO_ALLOWED_HOSTS | unset | Comma-separated Host names accepted in addition to localhost. If set without `LIO_ACCESS_CODE`, the service refuses to start. |
+| LIO_COOKIE_SECURE | unset | `true` forces the Secure cookie flag. It is also set automatically on https or `X-Forwarded-Proto: https`. |
+| LIO_EXPOSE_SOURCES | off | `true` re-enables /api/evidence (raw customer files). Local debugging only. Never set it on a hosted copy. |
+| LIO_EMAIL_ENABLED, SMTP_*, LIO_*_RECIPIENT | false / unset | Optional guarded send of an approved inquiry to a verified recipient. |
+| IMAP_* | unset | Optional read-only inbox check for supplier replies. |
+| LIO_DATA_DIR, LIO_STATE_DIR | data/soony-data, .local | Input folder and the folder for the SQLite state and assumptions. |
 
-Host only behind an HTTPS proxy and start uvicorn with `--proxy-headers --forwarded-allow-ips='*'` so the scheme and client address are read from the proxy (behind a proxy the global limiter is the real brute-force defence). Limiter and agent status are in memory, so run a single worker. The approver's draft (which includes PO and waybill numbers) is shown in the Details drawer by design.
+## Architecture
+
+```
+Portal drops (files) --> sync --> engine (reconcile: PO, ERP, plan, status, memo, policy)
+                                   |                                      |
+                         holds + conflicts + what-if            pricing + policy routing
+                                   \______________ tools _______________/
+              Agent (model chooses tools, bounded) --> Checker (numbers re-verified in code)
+                                   |
+        public.py allowlist (browser never sees documents/paths/quotes)  -->  UI (decision, rail, drawer)
+                                   |
+        drafts only --> named human approval --> (human or Gmail connector sends) --> reply import (human review)
+```
+
+Main modules in `app/`:
+- `sync.py` handles the portal. `engine.py` handles reconciliation. `holds.py`, `conflicts.py` and `whatif.py` cover holds, conflicts and what-if scenarios. `pricing.py` and `policy.py` handle pricing and approver routing.
+- `tools.py` and `agent_loop.py` run the agent. `crew.py` runs the roles and the rule-based fallback. `verify.py` is the number checker. `actions.py` writes the drafts. `public.py` is the browser allowlist. `access.py` is the login gate.
+- `frontend/` contains the UI (Vite + React).
+
+Agent limits (each can be changed via env): 8 turns, 20 tool calls, 45 s, and per-tool caps. The loop stops after 3 rejected calls in a row.
+
+## Data-driven vs assumption
+
+- **From the files:** quantities, stock, packing counts (from the newest status file), edition priority (from the CPO memo), approver tiers (from the approval policy), supplier holds and conflicts. No challenge results are stored as constants in the code.
+- **Assumptions:** freight rates and exchange rates are editable assumptions in `.local/assumptions.json`. They are empty by default, so options say "price unknown". The data has no selling price, so the app does not claim lost revenue. The figure it shows is product cost at stake.
+- **Simulated:** `scripts/simulate_supplier_reply.py` creates a rehearsal supplier reply. The reply goes through the real import path and is clearly labelled as simulated. Its numbers are scenario inputs, not facts.
+
+## When the system is wrong
+
+- Code fills in and re-checks every quantity, date, price and approver in a draft. If the model writes a number or claim that is not in the records, it is rejected and replaced with a sentence composed by code.
+- Code checks every tool call. Invalid calls are rejected and shown in the trace. If the model fails or makes no valid action, the rule-based path runs and is labelled as such.
+- Unknown arrivals and prices are shown as unknown, with low confidence. Allocating existing stock never counts as recovered copies.
+- New files trigger a fresh calculation and cancel existing approvals. Sending or spending always needs a named person.
+
+## Privacy and access
+
+The browser never receives source documents, file names, paths or excerpts. One filter layer (`app/public.py`) allowlists every API response. Raw evidence, tool arguments and model transcripts stay on the server. Agent steps appear only as generic labels. The approver's draft, which includes PO and waybill numbers, is shown in the Details drawer by design. API docs pages are disabled. Every response carries security headers. For hosting, put the app behind HTTPS with `--proxy-headers` (the Dockerfile already does this) and run a single worker, because the rate limiter and agent status live in memory. Customer data is used only for this hackathon and never committed.
 
 ## Known limits
 
-- No OCR/vision yet. The art-book shortage uses a provisional ordered-quantity estimate; the original scan remains server-side.
-- Game-card recovery availability, cost and warehouse arrival remain unconfirmed.
-- Read-only IMAP and local .eml reply intake are implemented; live inbox credentials are not configured. Sender matching does not prove identity. Offer claims require human review.
-- Per-edition packing bounds are calculated for reviewed offers, excluding nights and elapsed time. This is not a full allocation optimizer or real-time physical inventory; other components and shared capacity still constrain the launch.
-- Supported document parsers are limited; changed schemas/layouts may need human review or parser updates.
-- Shared-code access gate only (LIO_ACCESS_CODE); no per-user accounts. No spending commitments or unattended sending.
-
-## Validate
-
-```powershell
-python -m pytest -q
-node --check app/static/app.js
-node --check app/static/login.js
-```
-
-Tests use synthetic inputs and mocked transports, never private customer fixtures.
-
-## Continue with Claude
-
-Read AGENTS.md, docs/HANDOFF.md, docs/STATUS.md and docs/REVIEW_LOG.md. Update status after each milestone. The current UI specification is docs/PLAN_UI_POLISH.md. Commit or push only when the user requests it. This implementation is independent of Manuel's project.
-
-## Run the agent loop
-Open Details to run the agent again: check portal data, reconcile the selected issue, check a configured inbox, optionally run model-directed investigation, and prepare a supplier inquiry for approval. It never auto-sends or commits spending. The crew trace shows which roles ran. The arrival slider is a scenario calculated from the packing snapshot, not a confirmed delivery.
-
-Reply intake is available through the API and optional read-only IMAP. A plain-text .eml reply (max 2 MB) must match the configured sender and retain the case tag. Named review records quantity, timezone-aware warehouse arrival, cost and a verification note. The resulting scenario is a proposed supply alternative; source stock and orders remain unchanged. The current compact UI does not expose reply import or offer review.
-
-## Agent tools and autonomy ladder
-The model chooses tools; code validates every call and writes every number. Never registered (rejected and shown as "never"): send_email, place_order, book_freight, pay, approve, update_stock.
-
-| Tool | Autonomy |
-| --- | --- |
-| get_case, search_documents, read_document, list_supplier_holds, find_conflicts, check_policy, price_option, whatif | auto |
-| propose_option, draft_supplier_message, draft_escalation, set_recommendation, flag_unknown | draft (stored, never sent) |
-| request_approval | approval (queues; a named human approves) |
-
-The application never sends email. Without a key or when the model fails, the fixed rule-based order runs and is labelled run_mode rule_based. Set LIO_AGENT_MODEL (falls back to LIO_AI_MODEL).
+- Tested on one customer dataset only. Document parsers are limited, so a changed layout may need human review or a parser update.
+- No OCR or vision. The art-book shortage uses a provisional estimate.
+- Recovery arrival times, costs and supplier confirmations are unknown until a supplier replies. Prices stay "unknown" until the assumptions are filled in.
+- Hours left are counted from the time in the status file, not the wall clock. The packing bounds are not a full allocation optimiser.
+- The agent runs only when you press Run. It does not re-run automatically on a new data drop, and it does not yet explain what changed since the last run.
+- One shared access code, no per-user accounts. Approval records a typed name, but it does not prove who that person is. Matching a reply's sender does not prove identity either.
+- IMAP reply intake is built, but no live inbox is configured.
