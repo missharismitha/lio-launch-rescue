@@ -81,3 +81,10 @@ Implementation complete for Milestone 1. All source is on codex/launch-rescue-mv
 - Found the retained dev server on :8000 was stale (chat route 405); restarted it. Restart after pulling code changes.
 - Verified: pytest all passing, live POST /api/issues/game-card-shortage/chat 200 with real-data answer, UI renders at desktop width with Portal connected / Evidence mode labels.
 - Not verified: 375px mobile layout visually, live model chat (no key).
+
+## Fourth checkpoint: latest pack-out, CPO priority, agent-first UI
+- Engine now prefers soony/context/launch_status.xlsx (Saturday 13:00) over the plan workbook: Standard 554,000 and Collector's 53,100 packed. German number format (554.000) handled by _de_number. Remaining shift hours computed from the plan's Shifts sheet (23 h at Saturday 13:00). Stock is ERP snapshot minus parts used by copies packed since the plan (estimate; no physical count).
+- CPO memo (memo_launch_priorities.docx) parsed: Collector's first. Issue.allocation: Collector's 18,900 fully covered, Standard 79,200 of 86,000, 6,800 copies cannot be packed. Collector's needs 21 h of 23 h left: little slack.
+- Agent: OpenAI Responses tool loop (gpt-5.5 via .env) with get_current_issue / read_document / search_documents over pdf, md, txt, csv, docx, xlsx; Claude CLI fallback (app/claude_agent.py) when no OpenAI key.
+- UI: main view is verdict, allocation, per-edition hours, live work log of real tool calls, collapsible agent analysis, one decision button. Raw file paths and extracts are hidden by default.
+- Known gaps: the agent's supplier contact name is unverified; approval limits (PP-07: Category Lead <500k, air freight CPO above 200k/month) are not yet checked against a priced option; no supplier email sent; not deployed.

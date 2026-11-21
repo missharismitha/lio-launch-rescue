@@ -194,7 +194,7 @@ def investigate(issue_id: str):
         raise HTTPException(409, 'Set OPENAI_API_KEY and LIO_AI_MODEL locally to enable AI investigation.')
     try:
         result = investigator.run(issue, config.DATA_DIR,
-                                  lambda name: store.event(issue_id, 'agent_tool', f'Investigator called {name}'))
+                                  lambda name: (store.event(issue_id, 'agent_tool', f'Agent: {name}'), agent_status['steps'].append({'at': now(), 'message': f'Agent: {name}'}) if agent_status.get('running') else None))
     except (ValueError, OSError) as error:
         raise HTTPException(502, str(error))
     except Exception:

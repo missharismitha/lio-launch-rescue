@@ -29,13 +29,35 @@ def document_text(path: Path) -> str:
     if path.suffix.lower() == '.pdf':
         with pymupdf.open(path) as document:
             return '\n'.join(page.get_text() for page in document)
+    if path.suffix.lower() == '.docx':
+        import re, zipfile
+        with zipfile.ZipFile(path) as z:
+            xml = z.read('word/document.xml').decode('utf-8', 'replace')
+        return re.sub(r'<[^>]+>', ' ', xml.replace('</w:p>', '\n'))
+    if path.suffix.lower() == '.xlsx':
+        import openpyxl
+        book = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        return '\n'.join(f'[{ws.title}] ' + ' | '.join('' if c is None else str(c) for c in row) for ws in book for row in ws.iter_rows(values_only=True))
     if path.suffix.lower() in ('.csv', '.md', '.txt'):
         return path.read_text(encoding='utf-8-sig')
     return 'This source needs visual human review. No OCR result is available.'
 
 
+def describe_call(name, args):
+    if name == 'get_current_issue':
+        return 'Read the current reconciliation'
+    if name == 'read_document':
+        return 'Opened ' + str(args.get('path', '')).split('/')[-1]
+    if name == 'search_documents':
+        return 'Searched all documents for "' + str(args.get('query', ''))[:60] + '"'
+    return name
+
+
 def run(issue: dict, root: Path, progress=None, question=None) -> dict:
     key, model = os.getenv('OPENAI_API_KEY'), os.getenv('LIO_AI_MODEL')
+    if not (key and model) and os.getenv('LIO_AI_BACKEND', 'claude') == 'claude':
+        from app import claude_agent
+        return claude_agent.run(issue, root, progress, question)
     if not key or not model:
         raise ValueError('Set OPENAI_API_KEY and LIO_AI_MODEL in local .env to enable model investigation.')
     instructions = (
@@ -47,7 +69,12 @@ def run(issue: dict, root: Path, progress=None, question=None) -> dict:
         'Provide: verified findings with relative source paths; unknowns; ranked feasible investigations; '
         'questions to supplier; who must approve, based on supplied policy. If recovery is unconfirmed say so. '
         'You cannot send email, book freight, change stock, or approve expenditure. Limit yourself to investigation. '
-        'Finish with one specific recommended next action and its preconditions.')
+        'Finish with one specific recommended next action and its preconditions. '
+        'Answer in markdown with exactly these sections: ## Verdict (will Soony make Sunday 20:00 for this component: yes/no/unknown, one sentence) '
+        '## What I verified (bullets, each ending with its source file name) ## Contradictions and unknowns '
+        '## Plan B options (ranked; quantity, earliest warehouse arrival, cost, risk, what must be confirmed) '
+        '## Message to supplier (in the supplier language, then English; a question, never an order) '
+        '## Needs human approval (who signs, per policy files). Keep it under 450 words.')
     messages = [{'role': 'user', 'content': f"Investigate {issue['id']}. Use get_current_issue first. " + (question or 'Propose the next evidence-backed recovery step.')}]
     trace = []
 
@@ -64,7 +91,7 @@ def run(issue: dict, root: Path, progress=None, question=None) -> dict:
             if len(query) < 3:
                 return {'error': 'Use a specific query of at least three characters'}
             matches = []
-            for path in sorted(root.rglob('*.pdf')):
+            for path in sorted(p for p in root.rglob('*') if p.suffix.lower() in ('.pdf', '.md', '.txt', '.csv', '.docx', '.xlsx')):
                 try:
                     confined = safe_path(root, path.relative_to(root).as_posix())
                 except ValueError:
@@ -83,7 +110,7 @@ def run(issue: dict, root: Path, progress=None, question=None) -> dict:
                                  headers={'Authorization': 'Bearer ' + key, 'Content-Type': 'application/json'},
                                  json={'model': model, 'instructions': instructions, 'input': messages,
                                        'tools': TOOLS, 'tool_choice': 'none' if turn == 4 else 'auto',
-                                       'max_output_tokens': 2500, 'store': False}, timeout=90)
+                                       'max_output_tokens': 16000, 'reasoning': {'effort': 'medium'}, 'store': False}, timeout=150)
         if response.status_code != 200:
             raise ValueError(f'Model request returned HTTP {response.status_code}; check local model and key configuration.')
         result = response.json()
@@ -106,6 +133,6 @@ def run(issue: dict, root: Path, progress=None, question=None) -> dict:
                 args, tool_result = {}, {'error': 'Tool input invalid or source unavailable'}
             trace.append({'name': item['name'], 'arguments': args})
             if progress:
-                progress(item['name'])
+                progress(describe_call(item['name'], args))
             messages.append({'type': 'function_call_output', 'call_id': item['call_id'], 'output': json.dumps(tool_result)})
     raise ValueError('Investigation exceeded its tool budget. No action was taken.')

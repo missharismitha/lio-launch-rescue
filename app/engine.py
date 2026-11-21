@@ -85,6 +85,77 @@ def _plan(root):
     return products, inbound, file
 
 
+WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+
+def _de_number(value):
+    """German exports write 554.000 for 554,000; a plain float() would read 554."""
+    text = str(value if value is not None else '').strip()
+    if re.fullmatch(r'\d{1,3}(\.\d{3})+', text):
+        return int(text.replace('.', ''))
+    return int(_number(text))
+
+
+def _status(root):
+    """Newer pack-out counts than the planning workbook, if the customer supplied them."""
+    file = root / 'soony/context/launch_status.xlsx'
+    if not file.exists():
+        return None
+    book = load_workbook(file, read_only=True, data_only=True)
+    packed, as_of, notes = {}, None, []
+    try:
+        for sheet in book:
+            for values in sheet.iter_rows(values_only=True):
+                values = list(values)
+                for cell in values:
+                    match = re.search(r'(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+(\d{1,2}):(\d{2})', str(cell or ''))
+                    if match and not as_of:
+                        as_of = {'day': match[1], 'hour': int(match[2]) + int(match[3]) / 60, 'label': f'{match[1]} {match[2]}:{match[3]}'}
+                if len(values) >= 5 and str(values[1] or '').startswith('FG-'):
+                    packed[values[1]] = _de_number(values[3])
+                elif sheet.title == 'Notes' and values and values[0] and values[0] != 'Note':
+                    notes.append(str(values[0]))
+    finally:
+        book.close()
+    return {'file': file, 'packed': packed, 'as_of': as_of, 'notes': notes} if packed else None
+
+
+def _shifts(root):
+    file = root / 'soony/context/launch_plan_GH6.xlsx'
+    shifts = {}
+    if not file.exists():
+        return shifts
+    book = load_workbook(file, read_only=True, data_only=True)
+    try:
+        for sheet in book:
+            for values in sheet.iter_rows(values_only=True):
+                if values and values[0] in WEEKDAYS and len(values) > 1:
+                    match = re.search(r'(\d{1,2}):(\d{2})\D+(\d{1,2}):(\d{2})', str(values[1] or ''))
+                    if match:
+                        shifts[values[0]] = (int(match[1]) + int(match[2]) / 60, int(match[3]) + int(match[4]) / 60)
+    finally:
+        book.close()
+    return shifts
+
+
+def _hours_left(shifts, as_of):
+    if not shifts or not as_of or as_of['day'] not in WEEKDAYS:
+        return None
+    total = 0.0
+    for day, (start, end) in shifts.items():
+        if WEEKDAYS.index(day) < WEEKDAYS.index(as_of['day']):
+            continue
+        total += max(0.0, end - max(start, as_of['hour'])) if day == as_of['day'] else end - start
+    return round(total, 1)
+
+
+def _docx_text(path):
+    import zipfile
+    with zipfile.ZipFile(path) as archive:
+        xml = archive.read('word/document.xml').decode('utf-8', 'replace')
+    return ' '.join(re.sub(r'<[^>]+>', ' ', xml.replace('</w:p>', '\n')).split())
+
+
 def _short_shipment(text):
     """Parse explicit ordered / shipped / balance rows, never infer from prose alone."""
     if not re.search(r'short shipment', text, re.I):
@@ -135,13 +206,44 @@ def analyze(data_dir: Path) -> dict:
             stock[row['material_id']] += _number(row['quantity'])
             if row.get('batch'):
                 batches[row['batch']] = row
+    # The newest pack-out counts win over the planning workbook. Parts used by the
+    # copies packed since the plan are removed from the ERP stock estimate too,
+    # otherwise requirement and stock would describe different moments.
+    raw_stock = dict(stock)
+    status = _status(root)
+    packed_since = {}
+    result['pack_status'] = {'source': 'launch_plan_GH6.xlsx', 'as_of': 'plan status 2026-11-20 18:00', 'stock_basis': 'ERP snapshot'}
+    if status:
+        hours_left = _hours_left(_shifts(root), status['as_of'])
+        for product in products:
+            newer = status['packed'].get(product['id'])
+            if newer is None:
+                continue
+            if product['packed'] <= newer <= product['target']:
+                packed_since[product['id']] = newer - product['packed']
+                product.update(plan_packed=product['packed'], packed=newer, remaining=product['target'] - newer)
+            else:
+                result['warnings'].append(f"Status file pack count for {product['id']} ({newer:,}) contradicts the plan; plan count kept. Verify with the line lead.")
+            if hours_left is not None:
+                product['hours_available'] = hours_left
+        if packed_since:
+            label = status['as_of']['label'] if status['as_of'] else 'latest status'
+            result['pack_status'] = {'source': 'launch_status.xlsx', 'as_of': label, 'notes': status['notes'], 'hours_left': hours_left,
+                                     'stock_basis': 'ERP snapshot minus parts used by copies packed since the plan (estimate, no physical count)'}
+            result['warnings'].append(f'Pack-out uses {label} counts (newer than the launch plan). Stock is an estimate: ERP snapshot less parts consumed since; no physical count exists.')
+    for product in products:
+        product['hours_needed'] = round(product['remaining'] / product['rate_per_hour'], 1) if product.get('rate_per_hour') else None
     required = defaultdict(float)
     affected = defaultdict(list)
+    need_by_product = defaultdict(dict)
     for product in products:
         for row in bom:
             if row['parent_id'] == product['id'] and row.get('valid_from', '') <= snapshot <= row.get('valid_to', '9999-12-31'):
                 required[row['child_id']] += product['remaining'] * _number(row['qty_per'])
                 affected[row['child_id']].append(product['id'])
+                need_by_product[row['child_id']][product['id']] = product['remaining'] * _number(row['qty_per'])
+                if packed_since.get(product['id']):
+                    stock[row['child_id']] = max(0.0, stock[row['child_id']] - packed_since[product['id']] * _number(row['qty_per']))
     launch_dates = [r['launch_date'] for r in product_master if r.get('product_id') in {p['id'] for p in products}]
     launch = max(launch_dates) if launch_dates else None
     if launch is None:
@@ -156,11 +258,36 @@ def analyze(data_dir: Path) -> dict:
         return {'id': identifier, 'title': title, 'material_id': material,
                 'material_name': components.get(material, {}).get('description', material),
                 'severity': severity, 'status': 'investigation_required',
-                'required': int(required[material]), 'recorded_stock': int(stock[material]),
+                'required': int(required[material]), 'recorded_stock': int(raw_stock.get(material, 0)),
                 'usable_stock': int(stock[material]), 'incoming': 0,
                 'shortage': 0, 'affected_products': affected[material],
                 'confidence': 'documented', 'evidence': [], 'actions': [],
                 'recovery': {'status': 'unconfirmed', 'confirmed': False}}
+
+    priority = None
+    memo = root / 'soony/context/memo_launch_priorities.docx'
+    if memo.exists():
+        memo_text = _docx_text(memo)
+        if re.search(r"Collector.s Edition first", memo_text, re.I):
+            priority = {'name': 'Collector', 'path': memo, 'text': memo_text, 'rule': "Collector's Edition first (CPO memo, binding until launch)"}
+
+    def allocate(item, material):
+        needs = need_by_product.get(material, {})
+        if len(needs) < 2 or not priority:
+            return
+        available = max(0, item['usable_stock'] + item['incoming'])
+        lines = []
+        for product in sorted(products, key=lambda p: priority['name'].lower() not in p['name'].lower()):
+            need = int(needs.get(product['id'], 0))
+            if not need:
+                continue
+            covered = min(need, available)
+            available -= covered
+            lines.append({'product_id': product['id'], 'name': product['name'], 'needed': need, 'covered': covered, 'short': need - covered,
+                          'hours_needed': product.get('hours_needed'), 'hours_available': product.get('hours_available')})
+        item['allocation'] = {'rule': priority['rule'], 'lines': lines,
+                              'caveat': 'Incoming units count only if they reach DC-HAM and are released before the line needs them.'}
+        item['evidence'].append(_evidence(root, priority['path'], 'CPO launch priorities', priority['text'][:1500]))
 
     # Discover by content: filenames and folder labels are not evidence of type.
     by_material = defaultdict(list)
@@ -233,7 +360,7 @@ def analyze(data_dir: Path) -> dict:
             item['status'] = 'verification_required'
         item['evidence'] = [_evidence(root, r[1], 'Short-shipment advice', r[2][:2600]) for r in records]
         item['evidence'].extend([
-            evidence('soony/erp/stock_snapshot.csv', 'Stock snapshot', f"{material}: {int(stock[material]):,} recorded at {snapshot}."),
+            evidence('soony/erp/stock_snapshot.csv', 'Stock snapshot', f"{material}: {int(raw_stock.get(material, 0)):,} recorded at {snapshot}; estimated {int(stock[material]):,} after parts used since."),
             _evidence(root, plan_file, 'Launch requirements and inbound assumptions', f"{item['required']:,} units required; scheduled inbound must be reconciled with all supplier advices.")])
         item['actions'] = [_action('Confirm warehouse arrival', 'Ask the supplier and forwarder for flight status, handling time, final-mile delivery and dock slot.'),
                            _action('Investigate recovery', 'Request confirmed spare stock or earlier transport with quantities, prices, and DC-HAM delivery times.'),
@@ -241,6 +368,7 @@ def analyze(data_dir: Path) -> dict:
         item['recovery'].update({'description': 'No feasible recovery has been confirmed in the supplied data.',
                                  'options': ['Expedite confirmed available stock', 'Check alternative supplier availability', 'Approve allocation if recovery is infeasible'],
                                  'cost_eur': None, 'arrival_at': None})
+        allocate(item, material)
         result['issues'].append(item)
 
     # Receipt anomalies are estimates from ordered quantities, not an OCR claim.

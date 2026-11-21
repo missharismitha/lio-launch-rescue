@@ -33,7 +33,7 @@ const iconPaths = {
  external:["M14 3h7v7","m21 3-10 10","M10 3H3v18h18v-7"],book:["M12 5v16","M3 4c5-2 9 1 9 1s4-3 9-1v15c-5-2-9 1-9 1s-4-3-9-1Z"],
  alert:["m12 3 10 18H2Z","M12 9v5m0 3h.01"]
 };
-function icon(name) { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox","0 0 24 24"); svg.setAttribute("fill","none"); svg.setAttribute("stroke","currentColor"); svg.setAttribute("stroke-width","1.6"); svg.setAttribute("stroke-linecap","round"); svg.setAttribute("stroke-linejoin","round"); svg.setAttribute("aria-hidden","true"); for(const d of iconPaths[name] || iconPaths.spark){const path=document.createElementNS(svg.namespaceURI,"path");path.setAttribute("d",d);svg.append(path);} return svg; }
+function icon(name) { const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("viewBox","0 0 24 24"); svg.setAttribute("width","18"); svg.setAttribute("height","18"); svg.setAttribute("fill","none"); svg.setAttribute("stroke","currentColor"); svg.setAttribute("stroke-width","1.6"); svg.setAttribute("stroke-linecap","round"); svg.setAttribute("stroke-linejoin","round"); svg.setAttribute("aria-hidden","true"); for(const d of iconPaths[name] || iconPaths.spark){const path=document.createElementNS(svg.namespaceURI,"path");path.setAttribute("d",d);svg.append(path);} return svg; }
 function mountIcons(root=document){root.querySelectorAll("[data-icon]").forEach(node=>node.replaceChildren(icon(node.dataset.icon)));}
 function inspect(tab="evidence"){state.tab=tab;document.body.classList.remove("inspector-hidden");document.body.classList.add("inspector-open");$("inspector-toggle").setAttribute("aria-expanded","true");renderDetail();}
 function caseName(issue){return (issue.title||"Component review").split(":")[0];}
@@ -61,21 +61,87 @@ function renderOverview() {
  if(!list.children.length)list.append(element("p","loading",issues.length?"No matching cases.":"No case data yet. Connect the portal or rescan files."));
  renderThread();
 }
+const timeOnly = (v) => { const d = new Date(v); return Number.isNaN(d.getTime()) ? "" : new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Europe/Berlin" }).format(d); };
+function mdSections(text) {
+  const sections = []; let current = { title: "", lines: [] };
+  for (const raw of String(text || "").split("\n")) {
+    const heading = raw.match(/^#{1,3}\s+(.*)$/);
+    if (heading) { if (current.title || current.lines.length) sections.push(current); current = { title: heading[1].replace(/\s*\(.*$/, "").trim(), lines: [] }; }
+    else current.lines.push(raw);
+  }
+  sections.push(current);
+  return sections.filter(s => s.title || s.lines.join("").trim());
+}
+function mdBlock(lines) {
+  const box = element("div", "md");
+  let list = null;
+  for (const raw of lines) {
+    const line = raw.trim(); if (!line) { list = null; continue; }
+    const bullet = line.match(/^(?:[-*•]|\d+\.)\s+(.*)$/);
+    const target = bullet ? (list || (list = box.appendChild(element("ul")))) : box;
+    if (!bullet) list = null;
+    const node = bullet ? element("li") : element("p");
+    for (const [i, part] of (bullet ? bullet[1] : line).split("**").entries()) { if (!part) continue; node.append(i % 2 ? element("strong", "", part) : document.createTextNode(part.replace(/`/g, ""))); }
+    target.append(node);
+  }
+  return box;
+}
+function editionRows(products, allocation) {
+  const wrap = element("div", "editions");
+  for (const p of products) {
+    const row = element("div", "edition"), pct = p.target ? Math.round(p.packed / p.target * 100) : 0;
+    const line = (allocation?.lines || []).find(l => l.product_id === p.id);
+    const tight = p.hours_needed && p.hours_available && p.hours_needed / p.hours_available > 0.85;
+    const head = element("div", "edition-head");
+    head.append(element("strong", "", p.name), element("span", "", `${number(p.packed)} of ${number(p.target)} packed`));
+    const bar = element("div", "bar"); const fill = element("span", "fill"); fill.style.width = pct + "%"; bar.append(fill);
+    const facts = element("div", "edition-facts");
+    facts.append(element("span", tight ? "warn" : "", `${p.hours_needed ?? "—"} h of packing left to do · ${p.hours_available ?? "—"} h of shifts remain`));
+    if (line) facts.append(element("span", line.short ? "bad" : "good", line.short ? `${number(line.short)} short on this component` : "component fully covered"));
+    row.append(head, bar, facts); wrap.append(row);
+  }
+  return wrap;
+}
+function agentLog(detail, agent) {
+  const log = element("ol", "worklog");
+  const live = agent.running ? (agent.steps || []) : [];
+  const events = (detail?.events || []).filter(e => ["agent_tool", "investigated", "drafted", "approved", "sent", "question_answered"].includes(e.kind)).slice(0, 14).reverse();
+  const rows = agent.running ? live.map(s => ({ at: s.at, message: s.message, kind: "live" })) : events;
+  for (const row of rows) { const li = element("li", row.kind === "agent_tool" || row.kind === "live" ? "tool" : "done"); li.append(element("time", "", timeOnly(row.at)), element("span", "", String(row.message).replace(/^Agent: /, ""))); log.append(li); }
+  if (!rows.length) log.append(element("li", "idle", "The agent has not run yet. Press Run agent."));
+  return log;
+}
 function renderThread(){
- const panel=clear($("agent-thread")),issue=state.detail?getIssue():(state.overview?.issues||[]).find(i=>i.id===state.selected),caseData=getCase(),agent=state.overview?.agent||{};
- if(!issue){panel.append(element("p","loading","Reading your launch data…"));return;}
- const kicker=element("div","response-kicker");kicker.append(icon("files"),document.createTextNode(`${issue.evidence?.length||0} linked sources · ${human(issue.confidence||"review needed")}`));
- const title=issue.shortage>0?`${number(issue.shortage)} ${/card/i.test(issue.title)?"game cards":/book/i.test(issue.title)?"art books":/statue/i.test(issue.title)?"statues":"components"} need a recovery plan.`:"This component needs a closer look.";
- panel.append(kicker,element("h2","response-title",title),element("p","response-text",issue.summary));
- const math=element("div","supply-equation");for(const [label,value,key] of [["Recorded stock",issue.usable_stock,""],["Expected inbound",issue.incoming,""],["Still required",issue.required,""],["Uncovered",issue.shortage,"gap"]]){const item=element("div",key);item.append(element("span","",label),element("strong","",number(value)));math.append(item);}panel.append(math);
- const stages=element("div","task-track"),planDone=!!caseData.draft||!!caseData.investigation;const phase=[['Read sources',true],['Reconcile',true],['Plan a fix',planDone],['Your review',!!caseData.approved_fingerprint]];
- phase.forEach(([label,done],i)=>{const part=element("div",`stage ${done?"done":(i===2&&!planDone||i===3&&planDone)?"current":""}`),node=element("span","stage-node");if(done)node.append(icon("check"));else node.textContent=String(i+1);part.append(node,document.createTextNode(label));stages.append(part);if(i<phase.length-1)stages.append(element("span","track-line"));});panel.append(stages);
- const chips=element("div","source-chips");for(const [i,e] of (issue.evidence||[]).slice(0,3).entries()){const chip=element("button","source-chip");chip.type="button";chip.append(icon("files"),document.createTextNode(e.label.length>26?e.label.slice(0,25)+"…":e.label));chip.title=e.label;chip.addEventListener("click",()=>inspect("evidence"));chips.append(chip);}panel.append(chips);
- const tools=element("details","task-details"),summary=element("summary");summary.append(icon(agent.running?"clock":"check"),document.createTextNode(agent.running?"Agent is investigating…":agent.steps?.length?`${agent.steps.length} recorded activity steps`:"Evidence read and reconciled"));tools.append(summary);const steps=element("ol");for(const step of agent.steps||[])steps.append(element("li","",`${formatTime(step.at)} — ${step.message}`));if(!steps.children.length)steps.append(element("li","","Stock and requirements were calculated from the current source snapshot. No model call is implied."));tools.append(steps);panel.append(tools);
- if(agent.error)panel.append(message(agent.error,"error"));
- const next=element("div","next-action"),text=element("p");text.append(element("strong","",caseData.draft?"Your next move: review the inquiry":"Your next move: verify supply"),document.createTextNode(caseData.draft?"Check the supplier request before approving it.":"Ask for actual availability and warehouse arrival."));const button=element("button","button button-primary",caseData.draft?"Review inquiry":"Prepare inquiry");button.disabled=state.busy||agent.running||!!caseData.sent_at;button.addEventListener("click",()=>caseData.draft?inspect("action"):perform("draft",{}));next.append(text,button);panel.append(next);
- const suggestions=element("div","suggestions");for(const [label,prompt] of [["Explain this risk","Why is this case at risk?"],["Recovery options","What are the recovery options?"],["Show evidence","Which sources support this finding?"]]){const chip=element("button","suggestion",label);chip.type="button";chip.addEventListener("click",()=>sendChat(prompt));suggestions.append(chip);}panel.append(suggestions);
- renderChat();
+  const panel=clear($("agent-thread")),issue=state.detail?getIssue():(state.overview?.issues||[]).find(i=>i.id===state.selected),caseData=getCase(),agent=state.overview?.agent||{},products=state.overview?.products||[];
+  if(!issue){panel.append(element("p","loading","Reading your launch data…"));return;}
+  const inv=caseData.investigation, sections=inv?mdSections(inv.text):[];
+  const verdict=sections.find(s=>/verdict/i.test(s.title));
+  const noun=/card/i.test(issue.title)?"game cards":/book/i.test(issue.title)?"art books":/statue/i.test(issue.title)?"statues":"components";
+  // 1. Verdict
+  const kicker=element("div","response-kicker");kicker.append(icon("files"),document.createTextNode(inv?`Agent verdict · ${inv.model}`:`Reconciled from ${issue.evidence?.length||0} sources`));
+  panel.append(kicker,element("h2","response-title",issue.shortage>0?`${number(issue.shortage)} ${noun} short before Sunday 20:00.`:"Needs verification before launch."));
+  panel.append(verdict?mdBlock(verdict.lines):element("p","response-text",issue.summary));
+  // 2. Who gets what
+  if(issue.allocation){const a=issue.allocation;const box=element("div","allocation");box.append(element("h3","","Allocation under the CPO rule"),element("p","muted",a.rule));
+    for(const l of a.lines){const r=element("div",`alloc-row${l.short?" short":""}`);r.append(element("strong","",l.name),element("span","",`${number(l.covered)} of ${number(l.needed)} covered`),element("em","",l.short?`${number(l.short)} copies cannot be packed`:"fully covered"));box.append(r);}
+    box.append(element("p","muted",a.caveat));panel.append(box);}
+  panel.append(editionRows(products,issue.allocation));
+  const math=element("div","supply-equation");for(const [label,value,key] of [["Stock now (est.)",issue.usable_stock,""],["Inbound by launch",issue.incoming,""],["Still required",issue.required,""],["Uncovered",issue.shortage,"gap"]]){const item=element("div",key);item.append(element("span","",label),element("strong","",number(value)));math.append(item);}panel.append(math);
+  // 3. What the agent did
+  const work=element("section","worklog-card");const wh=element("div","worklog-head");wh.append(element("h3","",agent.running?"Agent is working…":"What the agent did"),element("span","muted",agent.running?"live":inv?`${inv.tool_calls?.length||0} tool calls`:""));work.append(wh,agentLog(state.detail,agent));
+  if(inv?.tool_calls?.length&&!agent.running){const d=element("details","task-details");d.append(element("summary","","Every document it opened or searched"));const ul=element("ul");for(const t of inv.tool_calls)ul.append(element("li","",`${t.name}: ${t.arguments?.path||t.arguments?.query||t.arguments?.file_path||t.arguments?.pattern||""}`.slice(0,150)));d.append(ul);work.append(d);}
+  panel.append(work);
+  if(agent.error)panel.append(message(agent.error,"error"));
+  // 4. Agent analysis sections
+  for(const s of sections){if(/verdict/i.test(s.title)||!s.title)continue;const d=element("details","analysis");if(/plan b|supplier/i.test(s.title))d.open=true;d.append(element("summary","",s.title),mdBlock(s.lines));panel.append(d);}
+  // 5. The decision
+  const next=element("div","next-action"),text=element("p");
+  const label=caseData.sent_at?"Inquiry sent":caseData.draft?"Review the supplier inquiry":inv?"Prepare the supplier inquiry":"Run the agent first";
+  text.append(element("strong","",label),document.createTextNode(caseData.draft?"It is drafted from the evidence. Nothing is sent until you approve it.":inv?"The agent recommends asking the supplier before anyone spends money.":"It will read the supplier documents, contracts and policies, then recommend a plan."));
+  const button=element("button","button button-primary",caseData.draft?"Review & approve":inv?"Draft inquiry":"Run agent");button.disabled=state.busy||agent.running||!!caseData.sent_at;
+  button.addEventListener("click",()=>caseData.draft?inspect("action"):inv?perform("draft",{}):runAgent());next.append(text,button);panel.append(next);
+  const suggestions=element("div","suggestions");for(const [lab,prompt] of [["Why is this at risk?","Why is this case at risk?"],["Recovery options","What are the recovery options?"],["Which sources?","Which sources support this finding?"]]){const chip=element("button","suggestion",lab);chip.type="button";chip.addEventListener("click",()=>sendChat(prompt));suggestions.append(chip);}panel.append(suggestions);
+  renderChat();
 }
 function renderChat(){const list=clear($("chat-messages"));for(const entry of state.detail?.chat||[]){const item=element("article",`chat-bubble ${entry.role}`);if(entry.role==="assistant"){const meta=element("div","chat-meta");meta.append(icon("spark"),document.createTextNode(entry.mode==="model"?"Model response":"From your case records"));if(entry.source_fingerprint&&entry.source_fingerprint!==getCase().source_fingerprint)meta.append(element("span","badge","Earlier snapshot"));item.append(meta);}item.append(element("p","chat-content",entry.text));list.append(item);}if(state.chatBusy){const wait=element("div","typing-indicator");wait.append(element("i"),element("i"),element("i"),document.createTextNode("Checking this case…"));list.append(wait);}}
 async function sendChat(text){text=text.trim();if(!text||!state.selected||state.chatBusy)return;const selected=state.selected;state.chatBusy=true;$("chat-input").value="";$("send-message").disabled=true;$("global-error").hidden=true;renderChat();try{const result=await api(`/api/issues/${encodeURIComponent(selected)}/chat`,{text});if(state.selected===selected){state.detail=result;renderDetail();}}catch(error){showError(error);}finally{state.chatBusy=false;$("send-message").disabled=false;renderChat();}}
@@ -117,11 +183,11 @@ function renderEvidence(panel, issue) {
   if (!issue.evidence?.length) panel.append(message("No supporting files are linked yet. Treat this finding as unverified."));
   for (const evidence of issue.evidence || []) {
     const card = element("article", "evidence-card"), top = element("div", "evidence-top"), label = element("div");
-    label.append(element("h4", "", evidence.label || evidence.path || "Source document"), element("p", "source-path", evidence.path || ""));
+    label.append(element("h4", "", evidence.label || evidence.path || "Source document"), element("p", "source-path", (evidence.path || "").split("/").pop().replace(/.[a-z0-9]+$/i, "").replace(/_/g, " ")));
     top.append(label);
     if (evidence.path) { const link = element("a", "", "Open source"); link.href = `/api/evidence?path=${encodeURIComponent(evidence.path)}`; link.target = "_blank"; link.rel = "noopener noreferrer"; top.append(link); }
     card.append(top);
-    if (evidence.excerpt) card.append(element("blockquote", "", evidence.excerpt));
+    if (evidence.excerpt) { const d = element("details", "extract"); d.append(element("summary", "", "Show extracted text"), element("blockquote", "", evidence.excerpt)); card.append(d); }
     panel.append(card);
   }
 }
@@ -146,7 +212,7 @@ function renderRecovery(panel, issue) {
   }
   if (!issue.actions?.length && !issue.recovery) panel.append(message("No feasible recovery has been established. Escalate the gap and investigate supplier availability."));
   const aiSection = element("section", "ai-investigation");
-  aiSection.append(element("h3", "", "AI investigation"), element("p", "panel-intro", aiEnabled ? "Running this investigation sends source excerpts to the configured OpenAI model. It can inspect evidence and recommend next steps; it cannot send supplier email or commit spending." : "AI investigation is not configured. Configure an OpenAI API key and model to enable it. The reconciliation above does not claim an AI model ran."));
+  aiSection.append(element("h3", "", "AI investigation"), element("p", "panel-intro", aiEnabled ? "Running this investigation lets Claude read the supplier documents with read-only tools. It can inspect evidence and recommend next steps; it cannot send supplier email or commit spending." : "AI investigation is not configured. Configure an OpenAI API key and model to enable it. The reconciliation above does not claim an AI model ran."));
   const investigate = element("button", "button button-quiet", state.busy ? "Working…" : "Run AI investigation");
   investigate.disabled = state.busy || !aiEnabled;
   investigate.addEventListener("click", () => perform("investigate", {}));

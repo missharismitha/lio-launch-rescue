@@ -21,9 +21,11 @@ POLL_SECONDS = max(30, int(os.getenv('LIO_POLL_SECONDS', '60')))
 
 def integrations() -> dict:
     email_ready = all(os.getenv(k) for k in ('SMTP_HOST', 'SMTP_FROM', 'SMTP_USERNAME', 'SMTP_PASSWORD'))
-    ai_ready = bool(os.getenv('OPENAI_API_KEY') and os.getenv('LIO_AI_MODEL'))
+    from app import claude_agent
+    claude_ready = os.getenv('LIO_AI_BACKEND', 'claude') == 'claude' and claude_agent.available()
+    ai_ready = bool(os.getenv('OPENAI_API_KEY') and os.getenv('LIO_AI_MODEL')) or claude_ready
     return {'portal_enabled': bool(PORTAL_TOKEN), 'ai_enabled': ai_ready,
             'email_enabled': os.getenv('LIO_EMAIL_ENABLED', '').lower() == 'true' and email_ready,
-            'reasoning_mode': 'Model tool investigation available' if ai_ready else 'Evidence rules active; model key and model name needed',
+            'reasoning_mode': 'Claude agent reads source documents with read-only tools' if ai_ready else 'Evidence rules active; no model available',
             'inbox_enabled': all(os.getenv(k) for k in ('IMAP_HOST', 'IMAP_USERNAME', 'IMAP_PASSWORD')),
             'reply_mode': 'Read-only IMAP or local .eml import; supplier claims require review'}
