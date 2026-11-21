@@ -47,8 +47,8 @@ Approval here authorizes the displayed inquiry only. It does not authenticate a 
 
 - No OCR/vision yet. Art-book scan is linked; the shortage uses a provisional ordered-quantity estimate.
 - Game-card recovery availability, cost and warehouse arrival remain unconfirmed.
-- No automated inbox/reply ingestion or fabricated supplier confirmations.
-- No packing simulator, allocation optimizer or real-time physical inventory. Workbook rates are source assumptions.
+- Read-only IMAP and local .eml reply intake are implemented; live inbox credentials are not configured. Sender matching does not prove identity. Offer claims require human review.
+- Per-edition packing bounds are calculated for reviewed offers, excluding nights and elapsed time. This is not a full allocation optimizer or real-time physical inventory; other components and shared capacity still constrain the launch.
 - Supported document parsers are limited; changed schemas/layouts may need human review or parser updates.
 - No production authentication, shared deployment, spending commitments or unattended sending.
 
@@ -64,3 +64,8 @@ Tests use synthetic inputs and mocked transports, never private customer fixture
 ## Continue with Claude
 
 Read AGENTS.md, docs/STATUS.md and docs/PLAN.md. Update status after each milestone. Use small commits on a task branch and keep main working. This implementation is independent of Manuel's project.
+
+## Run the agent loop
+Click Run agent to check portal data, reconcile the selected issue, check a configured inbox, optionally run model-directed investigation, and prepare a supplier inquiry for approval. It never auto-sends or commits spending. The timeline states which tools/connections ran.
+
+In Approval & activity, import a plain-text .eml reply (max2MB) whose sender matches your configured recipient and whose subject retains the case tag. Review quantity, timezone-aware warehouse arrival, cost and verification note. The resulting scenario is a proposed supply alternative; source stock and orders remain unchanged. IMAP credentials in .env enable read-only polling without marking messages read.

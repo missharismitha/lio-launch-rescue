@@ -15,9 +15,9 @@
 - [ ] Configure model key/name locally and verify real investigation/tool provenance.
 - [ ] Verify supplier inboxes; register sender in portal Settings.
 - [ ] Connect transport, explicitly approve one availability inquiry and verify delivery.
-- [ ] Implement inbox ingestion, sender checks, deduplication and attachments.
-- [ ] Extract replies into proposed facts with provenance; distinguish claims from warehouse receipts.
-- [ ] Recompute after verified response/new notice and demonstrate the loop.
+- [x] Implement read-only inbox/EML ingestion, sender-header/case checks and deduplication. Attachments require separate review; no automatic attachment claims.
+- [x] Extract strictly labelled reply fields as proposed facts; human review calculates a scenario without changing warehouse stock.
+- [x] Recompute a reviewed offer scenario; synthetic end-to-end tests pass. Live supplier response still needs configured transport.
 
 ## Milestone 3: Feasibility and hand-in
 - [ ] Confirm current packing progress, allocation priorities, arrival and dock slots with Soony.

@@ -21,11 +21,22 @@ from app.engine import analyze
 from app.store import Store, fingerprint
 from app.sync import PortalSync, safe_path, now
 from app import investigator
+from app.mailbox import Inbox
+from app.recovery import scenario, aware
 
 lock = threading.RLock()
 store = Store(config.STATE_DIR / 'cases.sqlite3')
 portal = PortalSync(config.DATA_DIR, config.STATE_DIR, config.PORTAL_TOKEN)
 snapshot = {}
+inbox = None
+agent_status = {'running': False, 'state': 'ready', 'steps': [], 'last_run': None, 'error': None}
+
+
+def current_inbox():
+    global inbox
+    if inbox is None or inbox.store is not store:
+        inbox = Inbox(store, store.path.parent / 'inbox')
+    return inbox
 
 
 def refresh(sync=False):
@@ -52,6 +63,12 @@ def overview():
     result = dict(snapshot)
     result['sync'] = portal.status.copy()
     result['integrations'] = config.integrations()
+    result['agent'] = dict(agent_status)
+    result['inbox'] = current_inbox().status.copy()
+    result['case_versions'] = {}
+    for issue in result.get('issues', []):
+        events = store.events(issue['id'])
+        result['case_versions'][issue['id']] = events[0]['at'] if events else None
     return result
 
 
@@ -60,7 +77,7 @@ def issue_detail(issue_id):
     if issue is None:
         raise HTTPException(404, 'Issue not found in current evidence')
     return {**issue, 'case': store.get(issue), 'events': store.events(issue_id),
-            'integrations': config.integrations()}
+            'integrations': config.integrations(), 'replies': current_inbox().list(issue_id)}
 
 
 async def poll():
@@ -68,6 +85,8 @@ async def poll():
         await asyncio.sleep(config.POLL_SECONDS)
         try:
             await asyncio.to_thread(refresh, bool(config.PORTAL_TOKEN))
+            if config.integrations()['inbox_enabled']:
+                await asyncio.to_thread(check_inbox)
         except Exception:
             # Never silently present an old result as fresh after ingestion fails.
             portal.status['error'] = 'Analysis failed. Last successful results retained; inspect the source formats.'
@@ -143,7 +162,7 @@ def draft(issue_id: str):
     with lock:
         issue = issue_detail(issue_id)
         case = issue['case']
-        if case['state'] in ('sending', 'sent', 'delivery_unknown'):
+        if case.get('sent_at') or case.get('delivery_status') in ('sending', 'delivery_unknown') or case['state'] in ('sending', 'sent', 'delivery_unknown'):
             raise HTTPException(409, 'An inquiry has already been sent or needs delivery reconciliation')
         evidence = '\n'.join('- ' + e.get('label', e['path']) + ': ' + e.get('excerpt', '')[:600]
                              for e in issue.get('evidence', [])[:5])
@@ -217,7 +236,7 @@ def send(issue_id: str):
         case = issue['case']
         if not config.integrations()['email_enabled']:
             raise HTTPException(409, 'Supplier email is not enabled. Configure a registered sender and SMTP transport first.')
-        if case['state'] != 'approved' or case.get('approved_fingerprint') != case['source_fingerprint']:
+        if case.get('sent_at') or case.get('delivery_status') in ('sending', 'delivery_unknown') or case['state'] != 'approved' or case.get('approved_fingerprint') != case['source_fingerprint']:
             raise HTTPException(409, 'Current evidence and inquiry require approval before sending')
         outgoing = case['draft']
         destination = recipient_for(issue)
@@ -258,6 +277,115 @@ def evidence(path: str):
     if not target.is_file() or target.suffix.lower() not in allowed:
         raise HTTPException(404, 'Evidence file not found')
     return FileResponse(target)
+
+
+def check_inbox():
+    with lock:
+        issues = [{**i, '_fingerprint': fingerprint(i)} for i in snapshot.get('issues', [])]
+    return current_inbox().check(issues, recipient_for)
+
+
+@app.post('/api/inbox/check')
+def inbox_check():
+    return check_inbox()
+
+
+@app.post('/api/issues/{issue_id}/replies/import')
+async def import_reply(issue_id: str, request: Request):
+    raw = await request.body()
+    with lock:
+        detail = issue_detail(issue_id)
+        issue = next(i for i in snapshot['issues'] if i['id'] == issue_id)
+        try:
+            record, created = current_inbox().ingest(raw, {**issue, '_fingerprint': fingerprint(issue)}, recipient_for(issue))
+        except ValueError as error:
+            raise HTTPException(400, str(error))
+        if created:
+            case = detail['case']
+            # Receiving a reply cannot reauthorize an old draft or mark a shipment confirmed.
+            case.update(state='reply_review_required', approved_fingerprint=None)
+            store.save(issue_id, case)
+        return issue_detail(issue_id)
+
+
+class OfferReview(BaseModel):
+    message_id: str = Field(min_length=1)
+    reviewer: str = Field(min_length=2, max_length=120)
+    quantity: int = Field(ge=0, le=10000000)
+    arrival_at: str
+    cost_eur: float = Field(ge=0, le=1000000000, allow_inf_nan=False)
+    note: str = Field(min_length=5, max_length=2000)
+
+
+@app.post('/api/issues/{issue_id}/replies/review')
+def review_reply(issue_id: str, review: OfferReview):
+    with lock:
+        detail = issue_detail(issue_id)
+        case = detail['case']
+        reply = next((m for m in detail['replies'] if m['id'] == review.message_id), None)
+        if not reply or reply['source_fingerprint'] != case['source_fingerprint']:
+            raise HTTPException(409, 'Reply is missing or tied to older evidence. Reverify against the current case.')
+        if not review.reviewer.strip() or not review.note.strip():
+            raise HTTPException(422, 'Reviewer and verification note are required')
+        try:
+            result = scenario(detail, snapshot['products'], snapshot['launch_date'], review.quantity, review.arrival_at, review.cost_eur)
+        except (ValueError, TypeError):
+            raise HTTPException(422, 'Arrival must be ISO 8601 with an explicit timezone and launch date must be available')
+        result.update(reviewer=review.reviewer.strip(), note=review.note, reply_id=reply['id'], reviewed_at=now(),
+                      source_fingerprint=case['source_fingerprint'])
+        case.update(recovery_offer=result, state='offer_reviewed', approved_fingerprint=None)
+        store.save(issue_id, case)
+        store.event(issue_id, 'offer_reviewed', f"{review.reviewer.strip()} reviewed a supplier offer. Scenario updated; recorded stock and orders unchanged.")
+        return issue_detail(issue_id)
+
+
+class AgentRun(BaseModel):
+    issue_id: str = 'game-card-shortage'
+
+
+def agent_cycle(issue_id):
+    try:
+        def step(message):
+            with lock:
+                agent_status['steps'].append({'at': now(), 'message': message})
+        step('Checking portal changes and reconciling customer sources.')
+        refresh(sync=bool(config.PORTAL_TOKEN))
+        step('Checking supplier replies; no outbound messages are sent automatically.')
+        if config.integrations()['inbox_enabled']:
+            check_inbox()
+        with lock:
+            current = issue_detail(issue_id)
+        if current.get('shortage', 0) <= 0:
+            step('No uncovered component quantity in this case. Review the source and other constraints.')
+            agent_status['state'] = 'review_findings'
+            return
+        if config.integrations()['ai_enabled']:
+            step('Investigating evidence with model-directed read-only tools.')
+            investigate(issue_id)
+            step('Saved a model investigation with tool provenance.')
+        else:
+            step('Evidence reconciliation complete. Model investigation requires a configured key and model; no model run claimed.')
+        with lock:
+            current = issue_detail(issue_id)
+            if not current['case'].get('sent_at') and not current['case'].get('draft') and current['case']['state'] not in ('sent', 'sending', 'delivery_unknown', 'reply_review_required', 'offer_reviewed'):
+                draft(issue_id)
+                step('Prepared an evidence-based availability inquiry for named human approval.')
+        agent_status['state'] = 'awaiting_human_review'
+        step('Waiting for review. No order, freight booking or supplier email has been sent by this cycle.')
+    except Exception:
+        agent_status.update(state='needs_attention', error='Agent cycle could not complete. Check connection status and current evidence; no automatic send occurred.')
+    finally:
+        agent_status.update(running=False, last_run=now())
+
+
+@app.post('/api/agent/run', status_code=202)
+def run_agent(run: AgentRun):
+    with lock:
+        if agent_status['running']:
+            raise HTTPException(409, 'Agent is already running')
+        agent_status.update(running=True, state='investigating', steps=[], error=None)
+        threading.Thread(target=agent_cycle, args=(run.issue_id,), daemon=True).start()
+        return dict(agent_status)
 
 
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='assets')

@@ -21,6 +21,11 @@ async function api(path, body) {
 }
 function renderOverview() {
   const overview = state.overview || {}, issues = overview.issues || [], sync = overview.sync || {}, integrations = overview.integrations || {};
+  const agent = overview.agent || {};
+  $("agent-state").textContent = agent.error || (agent.running ? "Investigating live evidence…" : human(agent.state || "ready"));
+  $("run-agent").disabled = !!agent.running || state.busy;
+  const steps = clear($("agent-steps"));
+  for (const step of agent.steps || []) steps.append(element("li", "", `${formatTime(step.at)} · ${step.message}`));
   $("risk-count").textContent = number(issues.filter(issue => issue.severity !== "info" && !["resolved", "dismissed"].includes(issue.status)).length);
   const launchDate = /^\d{4}-\d{2}-\d{2}$/.test(overview.launch_date || "") ? new Date(`${overview.launch_date}T12:00:00Z`) : null;
   $("launch-date").textContent = launchDate && !Number.isNaN(launchDate.getTime()) ? new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Berlin" }).format(launchDate) : "Not available";
@@ -34,7 +39,7 @@ function renderOverview() {
   $("source-mode").textContent = integrations.portal_enabled ? "Portal monitoring enabled" : "Local snapshot";
   $("checked-at").textContent = `Last checked ${formatTime(sync.last_checked)}`;
   $("snapshot-at").textContent = `Source snapshot ${formatTime(overview.snapshot_at)}`;
-  $("poll-note").textContent = integrations.portal_enabled ? `Portal checks every ${sync.poll_seconds || 60}s · screen updates every 15s` : "Portal token needed for automatic external updates · screen updates every 15s";
+  $("poll-note").textContent = integrations.portal_enabled ? `Portal checks every ${sync.poll_seconds || 60}s · screen updates every 3s` : "Portal token needed for automatic external updates · screen updates every 3s";
   $("sync-button").disabled = !integrations.portal_enabled || state.refreshing;
   $("refresh-button").disabled = state.refreshing;
   const tags = element("div", "integration-tags");
@@ -142,13 +147,18 @@ function renderRecovery(panel, issue) {
     aiSection.append(card);
   } else aiSection.append(element("p", "data-note", "No AI investigation has been recorded for this case."));
   panel.append(aiSection);
+  if (getCase().recovery_offer) {
+    panel.append(element("h3", "", "Reviewed supplier offer scenario"));
+    panel.append(element("pre", "draft-body", JSON.stringify(getCase().recovery_offer, null, 2)));
+    panel.append(message("This scenario does not change recorded stock, place an order, or confirm receipt. Per-edition bounds compete for the same offered units."));
+  }
   const button = element("button", "button button-dark", "Prepare supplier inquiry"); button.disabled = state.busy; button.style.marginTop = "20px"; button.addEventListener("click", () => perform("draft", {})); panel.append(button);
 }
 function renderAction(panel) {
   const caseData = getCase(), integrations = state.overview?.integrations || {}, draft = caseData.draft;
   const status = element("div", "workflow-status"); status.append(element("span", "badge", human(caseData.state || "not started")), element("span", "", caseData.sent_at ? `Sent ${formatTime(caseData.sent_at)}` : "No supplier commitment recorded")); panel.append(status);
   panel.append(message("Approval here authorizes the displayed inquiry only. It does not approve spending, release a purchase order, or replace Soony’s required business approver."));
-  const draftButton = element("button", "button button-quiet", draft ? "Regenerate inquiry draft" : "Prepare supplier inquiry"); draftButton.disabled = state.busy; draftButton.addEventListener("click", () => perform("draft", {})); panel.append(draftButton);
+  const draftButton = element("button", "button button-quiet", draft ? "Regenerate inquiry draft" : "Prepare supplier inquiry"); draftButton.disabled = state.busy || !!caseData.sent_at || ["sending", "delivery_unknown"].includes(caseData.state); draftButton.addEventListener("click", () => perform("draft", {})); panel.append(draftButton);
   if (draft) {
     const box = element("div", "draft-box");
     for (const [label, value] of [["Recipient", draft.to || "Not configured — email cannot be sent"], ["Subject", draft.subject || "No subject"]]) box.append(element("span", "draft-label", label), element("p", "draft-value", Array.isArray(value) ? value.join(", ") : value));
@@ -164,6 +174,7 @@ function renderAction(panel) {
     if (!integrations.email_enabled) panel.append(element("p", "data-note", "Email transport is not configured. Drafting and approval are available; nothing will be sent."));
     if (caseData.approver) panel.append(element("p", "data-note", `Last approver: ${caseData.approver}. Approval becomes invalid if the underlying evidence or draft changes.`));
   }
+  renderReplies(panel);
   panel.append(element("h3", "", "Case activity"));
   const events = state.detail?.events || caseData.events || [];
   if (!events.length) panel.append(element("p", "panel-intro", "No case actions recorded yet."));
@@ -188,12 +199,13 @@ async function perform(action, body) {
 }
 async function loadOverview(initial = false) {
   try {
+    const previousVersion = state.overview?.case_versions?.[state.selected];
     const previousIssue = state.overview?.issues?.find(issue => issue.id === state.selected);
     state.overview = await api("/api/overview"); renderOverview();
     const issues = state.overview.issues || [];
     if (initial || !state.selected || !issues.some(issue => issue.id === state.selected)) {
       const issue = issues.find(item => item.id === "game-card-shortage") || issues[0]; if (issue) await selectIssue(issue.id);
-    } else if (JSON.stringify(previousIssue) !== JSON.stringify(issues.find(issue => issue.id === state.selected))) {
+    } else if (JSON.stringify(previousIssue) !== JSON.stringify(issues.find(issue => issue.id === state.selected)) || previousVersion !== state.overview.case_versions?.[state.selected]) {
       const selectedId = state.selected;
       const detail = await api(`/api/issues/${encodeURIComponent(selectedId)}`);
       if (state.selected === selectedId) { state.detail = detail; renderDetail(); }
@@ -208,5 +220,45 @@ async function refresh(kind) {
 }
 $("refresh-button").addEventListener("click", () => refresh("refresh"));
 $("sync-button").addEventListener("click", () => refresh("sync"));
+$("run-agent").addEventListener("click", async () => {
+  try { await api("/api/agent/run", {issue_id: state.selected || "game-card-shortage"}); await loadOverview(); }
+  catch(error) { showError(error); }
+});
 loadOverview(true);
-setInterval(() => { if (!document.hidden && !state.busy && !state.refreshing) loadOverview(); }, 15000);
+setInterval(() => { if (!document.hidden && !state.busy && !state.refreshing && !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)) loadOverview(); }, 3000);
+
+function renderReplies(panel) {
+  const section = element("section", "reply-section");
+  section.append(element("h3", "", "Supplier replies"), element("p", "panel-intro", "Import a plain-text .eml export or check the configured inbox. Sender headers must match your configured supplier; that alone does not prove identity. Review claims before using an offer."));
+  const check = element("button", "button button-quiet", "Check supplier inbox");
+  check.disabled = state.busy || !state.overview?.integrations?.inbox_enabled;
+  check.addEventListener("click", async () => {
+    try { const result = await api("/api/inbox/check", {}); if (result.error) throw new Error(result.error); await selectIssue(state.selected); }
+    catch(error) { showError(error); }
+  });
+  const upload = element("input"); upload.type = "file"; upload.accept = ".eml"; upload.setAttribute("aria-label", "Import supplier reply as EML");
+  upload.addEventListener("change", async () => {
+    const file = upload.files[0]; if (!file) return;
+    if (file.size > 2097152) { showError(new Error("Email exceeds the 2 MB import limit.")); return; }
+    try {
+      const response = await fetch(`/api/issues/${encodeURIComponent(state.selected)}/replies/import`, {method: "POST", headers: {"Content-Type":"message/rfc822"}, body: file});
+      const result = await response.json(); if (!response.ok) throw new Error(result.detail || "Import failed");
+      state.detail = result; renderDetail();
+    } catch(error) { showError(error); }
+  });
+  section.append(check, upload);
+  for (const reply of state.detail?.replies || []) {
+    const card = element("article", "evidence-card");
+    card.append(element("h4", "", reply.subject), element("p", "data-note", `${reply.sender} · ${formatTime(reply.received_at)} · Header matched, identity requires verification`), element("pre", "draft-body", reply.body));
+    const form = element("form", "approval-form"), values = {};
+    for (const [key,label,type,value] of [["reviewer","Reviewer name","text",""],["quantity","Additional available units","number",reply.candidates?.quantity ?? ""],["arrival_at","Warehouse arrival (ISO timestamp with timezone)","text",reply.candidates?.arrival_at ?? ""],["cost_eur","Total offered cost EUR","number",reply.candidates?.cost_eur ?? ""],["note","How you verified the offer","text",""]]) {
+      const wrapper = element("label", "", label), input = element("input"); input.type = type; input.required = true; input.value = value; if (type === "number") { input.min = "0"; input.step = key === "quantity" ? "1" : "0.01"; } wrapper.append(input); form.append(wrapper); values[key] = input;
+    }
+    const button = element("button", "button button-primary", "Review offer and calculate scenario"); button.type = "submit"; button.disabled = state.busy; form.append(button);
+    form.addEventListener("submit", event => {
+      event.preventDefault(); perform("replies/review", {message_id: reply.id, reviewer: values.reviewer.value, quantity: Number(values.quantity.value), arrival_at: values.arrival_at.value, cost_eur: Number(values.cost_eur.value), note: values.note.value});
+    });
+    card.append(form); section.append(card);
+  }
+  panel.append(section);
+}

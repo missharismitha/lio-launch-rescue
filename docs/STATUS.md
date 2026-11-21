@@ -54,11 +54,23 @@ States: detected, drafted, approved, sending, sent, delivery_unknown, review_req
 ## Next concrete tasks
 1. Configure OPENAI_API_KEY and LIO_AI_MODEL locally; verify a real investigation before claiming live model support.
 2. Verify hackathon supplier inboxes/sender and connect email only on user instruction.
-3. Build inbox ingestion; close inquiry-response-recalculation loop.
+3. Inbox ingestion and reviewed reply-to-scenario recalculation are implemented. Configure live IMAP/SMTP and verify them on user-authorized correspondence.
 4. Interview customer about allocation priorities, actual inventory and remaining shifts; calculate packing feasibility.
 5. Add authentication before hosting; current app is loopback only. Deployment not done.
 
 Follow docs/PLAN.md. Keep docs and commits current. Never upload data/secrets.
 
 ## Delivery checkpoint
-Implementation complete for Milestone 1. All source is on codex/launch-rescue-mvp; commit history is the authoritative checkpoint. App runs at localhost:8000 and portal polling succeeds. Further milestones need model credentials, verified sender setup, reply ingestion and deployment authentication.
+Implementation complete for Milestone 1. All source is on codex/launch-rescue-mvp; commit history is the authoritative checkpoint. App runs at localhost:8000 and portal polling succeeds. Further live verification needs model credentials, verified sender setup and deployment authentication.
+
+## Second implementation checkpoint
+- Run agent orchestrator: portal sync, evidence reconciliation, optional model investigation, inquiry preparation, then human review. No automatic send.
+- app/mailbox.py: read-only IMAP (last50 messages, size limit), plain-text .eml import, exact sender/case tag checks, Message-ID/content deduplication, raw emails stored only in ignored .local/inbox. Sender headers are NOT authenticated identity.
+- app/recovery.py: review supplier offers with explicit timezone, per-edition packing bounds excluding night shifts and elapsed time, PP-07 value threshold guidance. Source inventory remains unchanged; scenario options are not additive.
+- UI: agent execution timeline, reply import, inbox check, named review and recovery scenario.
+- New API: POST /api/agent/run {issue_id}; POST /api/inbox/check; POST /api/issues/{id}/replies/import (message/rfc822 bytes); POST /api/issues/{id}/replies/review {message_id (digest),reviewer,quantity,arrival_at,cost_eur,note}.
+- Real local agent cycle successfully ran against portal: reconciliation and inquiry draft completed, no model invocation (unconfigured), no outbound email.
+- User asked to locate separate model credentials in Discord/email. Checked complete Lio channel (no pins), challenge Notion page, portal settings; only data token found. Server-wide key search identified 5U challenge mailbox/LLM gateway and AMD Token Factory, not a Lio model key. Email had personal OpenAI credit redemption, not API key. No account keys were created or vouchers redeemed. Do not claim model is connected.
+
+## Latest validation
+59 tests passed, 1 Windows symlink-permission test skipped. JavaScript syntax check passed. Real portal-connected Run agent completed to awaiting_human_review without error and drafted an inquiry; no email sent. Synthetic reply import -> named review -> recovery scenario verified without altering source stock. Repeated cycles and replies cannot bypass duplicate-delivery guards. Live model and SMTP/IMAP remain unconfigured, so do not describe them as verified live integrations.

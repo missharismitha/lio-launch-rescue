@@ -25,4 +25,5 @@ def integrations() -> dict:
     return {'portal_enabled': bool(PORTAL_TOKEN), 'ai_enabled': ai_ready,
             'email_enabled': os.getenv('LIO_EMAIL_ENABLED', '').lower() == 'true' and email_ready,
             'reasoning_mode': 'Model tool investigation available' if ai_ready else 'Evidence rules active; model key and model name needed',
-            'reply_mode': 'Manual confirmation only; inbox ingestion not connected'}
+            'inbox_enabled': all(os.getenv(k) for k in ('IMAP_HOST', 'IMAP_USERNAME', 'IMAP_PASSWORD')),
+            'reply_mode': 'Read-only IMAP or local .eml import; supplier claims require review'}
