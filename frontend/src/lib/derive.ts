@@ -20,6 +20,8 @@ export function recOption(d: Detail): Option | undefined {
 export const isRecommended = (x: Option, d: Detail): boolean =>
   x.recommended === true || (x.recommended === undefined && !!x.title && x.title === recName(d));
 
+export const SENT_BY_HAND = 'Sent by hand, delivery not confirmed';
+
 export const manualSend = (d: Detail): boolean => !!d.case?.draft?.manual_send;
 
 /* copies gained is shown only when it is real: a recovery/release with a known arrival, never an allocation or a check */
@@ -78,7 +80,7 @@ export type CardState =
   | { kind: 'no_gap' }
   | { kind: 'delivery_unknown' }
   | { kind: 'offer' }
-  | { kind: 'sent' }
+  | { kind: 'sent'; manual: boolean }
   | { kind: 'replied' }
   | { kind: 'approved_manual' }
   | { kind: 'approved_send'; sendEnabled: boolean }
@@ -91,7 +93,7 @@ export function cardState(d: Detail, agentError: boolean, aiOn: boolean, emailOn
   if (!((d.shortage ?? 0) > 0) && !c.draft && !c.sent_at) return { kind: 'no_gap' };
   if (c.state === 'sending' || c.state === 'delivery_unknown') return { kind: 'delivery_unknown' };
   if (d.offer) return { kind: 'offer' };
-  if (c.sent_at) return (d.replies || []).length ? { kind: 'replied' } : { kind: 'sent' };
+  if (c.sent_at) return (d.replies || []).length ? { kind: 'replied' } : { kind: 'sent', manual: !!c.sent_manually };
   if (c.draft && c.approved) {
     if (d.escalation && !d.escalation.approved) return { kind: 'approved_partial' };
     return manualSend(d) ? { kind: 'approved_manual' } : { kind: 'approved_send', sendEnabled: emailOn };

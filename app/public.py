@@ -420,6 +420,7 @@ def public_case(case, source_fingerprint=None):
     approved_fp = case.get('approved_fingerprint')
     return {
         'state': case.get('state'), 'approver': case.get('approver'), 'sent_at': case.get('sent_at'),
+        'sent_manually': bool(case.get('sent_manually')),
         'delivery_status': case.get('delivery_status'),
         'approved': (case.get('state') == 'approved' and bool(approved_fp) and approved_fp == fingerprint
                      and (not draft or case.get('approved_draft_hash') == draft_hash(draft))),

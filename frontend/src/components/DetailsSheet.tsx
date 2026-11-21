@@ -13,7 +13,7 @@ import { useLaunch } from '@/hooks/useLaunch';
 import { useUi, type TabId } from '@/hooks/useUi';
 import { useWhatIf } from '@/hooks/useWhatIf';
 import { api } from '@/lib/api';
-import { MANUAL_NOTE, approverName, briefGains, recOption } from '@/lib/derive';
+import { MANUAL_NOTE, SENT_BY_HAND, approverName, briefGains, recOption } from '@/lib/derive';
 import { cap, eur, etaText, num, timeOnly } from '@/lib/format';
 import type { Detail, Overview } from '@/lib/types';
 
@@ -201,7 +201,7 @@ function MessagesTab({ d, o }: { d: Detail; o: Overview }) {
         </SheetSection>
       ) : null}
       {c.sent_at ? (
-        <p className="m-0 text-ink-2">Sent.</p>
+        <p className="m-0 text-ink-2">{c.sent_manually ? `${SENT_BY_HAND}.` : "Sent."}</p>
       ) : all ? (
         <div className="grid gap-2">
           {c.draft?.manual_send ? (

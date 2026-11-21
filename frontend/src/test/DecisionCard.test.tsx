@@ -45,9 +45,9 @@ describe('DecisionCard state to button', () => {
     expect(container.textContent).toContain('Release the hold');
     expect(container.textContent).not.toContain('Then wait');
   });
-  it('approved shows no send claim and no button when manual', () => {
+  it('approved shows no send claim and only the hand-off button when manual', () => {
     const { container } = view({ shortage: 10, case: { approved: true, draft: { manual_send: true } }, brief: {} });
-    expect(buttons(container)).toEqual([]);
+    expect(buttons(container)).toEqual(['Send it yourself…']);
     expect(container.textContent).toContain('Approved. Nothing was sent.');
     expect(container.textContent).toContain('Send this one yourself from your own mail after approval.');
   });

@@ -86,6 +86,7 @@ export interface CaseInfo {
   draft?: Draft | null;
   investigation?: unknown;
   sent_at?: string | null;
+  sent_manually?: boolean;
 }
 
 export interface Escalation {

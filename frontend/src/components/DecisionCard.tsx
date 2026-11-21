@@ -4,10 +4,11 @@ import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ApproverBadge, Fact, Facts, Label, RiskNote } from '@/components/common';
+import { ImportReply, ManualSend } from '@/components/ManualSend';
 import { OfferCard } from '@/components/OfferCard';
 import { useLaunch } from '@/hooks/useLaunch';
 import { useUi } from '@/hooks/useUi';
-import { MANUAL_NOTE, approverName, cardLead, cardState, cardTitle, nounOf, recName } from '@/lib/derive';
+import { MANUAL_NOTE, SENT_BY_HAND, approverName, cardLead, cardState, cardTitle, nounOf, recName } from '@/lib/derive';
 import { num, timeOnly } from '@/lib/format';
 import type { Detail, Overview } from '@/lib/types';
 
@@ -63,7 +64,13 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
     case 'delivery_unknown':
       return shell('delivery_unknown', <h2 className={H}>Delivery not confirmed. Check sent mail.</h2>);
     case 'sent':
-      return shell('sent', <h2 className={H}>Sent. Waiting for {supplier}.</h2>);
+      return shell(
+        'sent',
+        <>
+          <h2 className={H}>{st.manual ? `${SENT_BY_HAND}. Waiting for ${supplier}.` : `Sent. Waiting for ${supplier}.`}</h2>
+          <ImportReply id={launch.selected || ''} />
+        </>,
+      );
     case 'replied':
       return shell(
         'replied',
@@ -81,6 +88,7 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
           <h2 className={H}>Approved. Nothing was sent.</h2>
           <p className="m-0 max-w-[64ch] text-ink-2">{MANUAL_NOTE}</p>
           <Label>Approved by {approverName(d)}.</Label>
+          {!emailOn ? <ManualSend d={d} id={launch.selected || ''} /> : null}
         </>,
       );
     case 'approved_send':
@@ -89,8 +97,11 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
         <>
           <h2 className={H}>Approved. Nothing was sent.</h2>
           <Label>Approved by {approverName(d)}.</Label>
-          {primary('Send to supplier', () => ui.openSheet('messages', 'approve'), { disabled: !st.sendEnabled })}
-          {!st.sendEnabled ? <p className="m-0 text-[14px] text-ink-3">Sending is off until a sender is registered.</p> : null}
+          {st.sendEnabled ? (
+            primary('Send to supplier', () => ui.openSheet('messages', 'approve'))
+          ) : (
+            <ManualSend d={d} id={launch.selected || ''} />
+          )}
         </>,
       );
     case 'approved_partial':

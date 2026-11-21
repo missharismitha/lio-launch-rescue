@@ -1,5 +1,6 @@
 """Local-only HTTP service. Start with python -m uvicorn app.main:app."""
 import asyncio
+import csv
 import hashlib
 from contextlib import asynccontextmanager
 from email.message import EmailMessage
@@ -446,6 +447,68 @@ def send(issue_id: str):
         case.update(state='sent', sent_at=now())
         store.save(issue_id, case)
         store.event(issue_id, 'sent', 'SMTP accepted the inquiry. Supplier confirmation and shipment remain unverified.')
+        return public.public_detail(issue_detail(issue_id))
+
+
+def profile_contact(supplier_name):
+    """Contact address from a supplier's own profile, matched by name. Server-side only; '' when not found."""
+    wanted = str(supplier_name or '').strip().casefold()
+    if not wanted:
+        return ''
+    for path in sorted((config.DATA_DIR).glob('suppliers/*/profile.csv')):
+        try:
+            with path.open(encoding='utf-8-sig', newline='') as stream:
+                for row in csv.DictReader(stream):
+                    if wanted in {str(row.get('name') or '').strip().casefold(), str(row.get('legal_name') or '').strip().casefold()}:
+                        return str(row.get('contact_email') or '').strip()
+        except (OSError, csv.Error):
+            continue
+    return ''
+
+
+def approved_unsent(issue_id):
+    """(issue, case) when the supplier inquiry is approved for the current evidence and not yet sent; else HTTP 409."""
+    issue = issue_detail(issue_id)
+    case = issue['case']
+    draft_ = case.get('draft')
+    if (not draft_ or case.get('sent_at') or case.get('state') != 'approved'
+            or case.get('approved_fingerprint') != case.get('source_fingerprint')
+            or case.get('approved_draft_hash') != public.draft_hash(draft_)):
+        raise HTTPException(409, 'Approve the current inquiry first. It must be approved for the current evidence and not yet sent.')
+    return issue, case
+
+
+@app.get('/api/issues/{issue_id}/handoff')
+def handoff(issue_id: str):
+    """The approved inquiry for sending by hand from the operator's own mailbox. Nothing is sent by the application."""
+    with lock:
+        issue, case = approved_unsent(issue_id)
+        draft_ = case['draft']
+        to = str(draft_.get('to') or '')
+        if not to:
+            crew_data = case.get('crew') if isinstance(case.get('crew'), dict) else {}
+            first = (crew_data.get('supplier_drafts') or [None])[0]
+            to = profile_contact(first.get('supplier') if isinstance(first, dict) else None)
+        return JSONResponse({'to': to, 'subject': draft_.get('subject') or '', 'body': draft_.get('body') or ''},
+                            headers={'Cache-Control': 'no-store'})
+
+
+class MarkSent(BaseModel):
+    sent_by: str = Field(min_length=2, max_length=120)
+
+
+@app.post('/api/issues/{issue_id}/mark-sent')
+def mark_sent(issue_id: str, body: MarkSent):
+    """Record that a named person sent the approved inquiry by hand. Delivery and receipt stay unverified."""
+    with lock:
+        issue, case = approved_unsent(issue_id)
+        name = body.sent_by.strip()
+        if len(name) < 2:
+            raise HTTPException(422, 'A name is required')
+        case.update(state='sent', sent_at=now(), sent_manually=True, sent_by=name)
+        store.save(issue_id, case)
+        store.event(issue_id, 'sent_manually', f"{name} says the approved inquiry was sent by hand from their own mailbox. "
+                                               "Delivery and supplier receipt are not confirmed.")
         return public.public_detail(issue_detail(issue_id))
 
 
