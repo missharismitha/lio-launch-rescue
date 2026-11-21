@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Launch Rescue · Soony</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Launch Rescue home"><span class="brand-mark">L<span>R</span></span><span>Launch Rescue<small>SOONY OPERATIONS</small></span></a>
+    <span class="workspace">Hamburg distribution center <span class="workspace-tag">GH6 LAUNCH</span></span>
+    <span class="local-label">Private workspace</span>
+  </header>
+  <main>
+    <section class="page-heading">
+      <div><p class="eyebrow">KEEP THE LINE RUNNING</p><h1>See the risk.<br><span>Make the next move.</span></h1><p class="intro">Evidence-backed decisions for the last stretch of launch.</p></div>
+      <div class="launch-card"><span class="eyebrow">LAUNCH DATE · FROM SOURCE</span><strong id="launch-date">Not available</strong><p>Hamburg · Europe/Berlin</p><span class="deadline-note">Confirm the departure time in the launch plan. Allow time to pack.</span></div>
+    </section>
+    <div class="connection-bar"><div><span class="status-dot"></span><strong id="source-mode">Connecting to local service</strong><span id="checked-at">Waiting for first check</span></div><div class="refresh-actions"><button class="button button-quiet" id="sync-button">Check portal</button><button class="button button-dark" id="refresh-button">Rescan local files</button></div></div>
+    <div id="global-error" class="notice error" role="alert" hidden></div>
+    <div id="warnings" class="warnings"></div>
+    <section class="summary-grid" aria-label="Launch status">
+      <article class="metric"><span>Open risks</span><strong id="risk-count">—</strong><small>Prioritized by component impact</small></article>
+      <article class="metric"><span>Standard still to pack</span><strong id="standard-remaining">—</strong><small id="standard-rate">Loading source data</small></article>
+      <article class="metric"><span>Collector’s still to pack</span><strong id="collectors-remaining">—</strong><small id="collectors-rate">Loading source data</small></article>
+      <article class="metric integrations"><span>Connections</span><div id="integrations"></div><small id="snapshot-at">Snapshot not loaded</small></article>
+    </section>
+    <section class="workbench">
+      <aside class="risk-sidebar"><div class="section-heading"><h2>Needs attention</h2><span id="issue-total" class="count">—</span></div><p class="muted sidebar-intro">One component can stop a complete edition.</p><div id="issue-list" class="issue-list"><p class="loading">Reading the operational picture…</p></div><p class="sidebar-footnote">Risks can overlap. Shortages are not additive across editions.</p></aside>
+      <section id="issue-detail" class="issue-detail" aria-live="polite"><div class="empty-state"><span class="empty-icon">◎</span><h2>Your next decision starts here</h2><p>Once data is loaded, choose a risk to review its evidence and next action.</p></div></section>
+    </section>
+    <footer><span>Launch Rescue · Read. Reconcile. Recover.</span><span id="poll-note">Local case history persists between sessions.</span></footer>
+  </main>
+</body>
+</html>
