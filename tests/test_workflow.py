@@ -68,7 +68,8 @@ def test_approval_requires_a_current_draft(workflow):
     assert draft.status_code == 200
     case = draft.json()['case']
     assert case['state'] == 'drafted'
-    assert case['draft']['to'] == 'supplier@example.invalid'
+    assert 'to' not in case['draft'] and case['draft']['has_recipient'] is True
+    assert main.store.get(workflow.issue)['draft']['to'] == 'supplier@example.invalid'
     assert '37' in case['draft']['body']
     assert 'not an order' in case['draft']['body']
     assert not workflow.sent
@@ -157,6 +158,7 @@ def test_local_mutations_reject_foreign_origin(workflow):
 
 @pytest.mark.parametrize('path', ['../secret.txt', '/secret.txt', 'C:/secret.txt', 'folder\\secret.txt'])
 def test_evidence_path_cannot_escape_customer_root(workflow, path):
+    workflow.monkeypatch.setenv('LIO_EXPOSE_SOURCES', 'true')
     response = workflow.client.get('/api/evidence', params={'path': path})
     assert response.status_code == 400
 
@@ -173,7 +175,8 @@ def test_approval_and_history_survive_store_reopening(workflow):
     detail = workflow.client.get('/api/issues/game-card-shortage').json()
     assert detail['case']['state'] == 'approved'
     assert detail['case']['approver'] == 'Test Reviewer'
-    assert {event['kind'] for event in detail['events']} >= {'detected', 'drafted', 'approved'}
+    assert {event['kind'] for event in detail['events']} >= {'drafted', 'approved'}
+    assert {e['kind'] for e in main.store.events(workflow.issue['id'])} >= {'detected', 'drafted', 'approved'}
 
 
 def test_investigation_disabled_gate_makes_no_model_call(workflow):

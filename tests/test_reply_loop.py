@@ -6,6 +6,7 @@ from test_workflow import workflow
 from app import main
 from app.mailbox import candidates
 from app.recovery import aware, packing_hours, scenario
+from tests.test_policy import make_policy
 
 
 def email(sender='supplier@example.invalid', tag='game-card-shortage', message_id='<reply-1@example.invalid>', body=None):
@@ -36,15 +37,20 @@ def test_reply_to_reviewed_offer_keeps_stock_unchanged(workflow):
     detail = response.json()
     assert detail['case']['state'] == 'reply_review_required'
     reply = detail['replies'][0]
-    assert reply['identity_verified'] is False
-    assert reply['candidates']['quantity'] == 40
+    assert set(reply) == {'id', 'received_at', 'source_fingerprint', 'simulated'}
+    assert reply['simulated'] is False
+    stored = main.current_inbox().list('game-card-shortage')[0]
+    assert stored['identity_verified'] is False
+    assert stored['candidates']['quantity'] == 40
     assert detail['usable_stock'] == 50
     updated = review(workflow, reply['id'])
     assert updated.status_code == 200
     detail = updated.json()
     assert detail['shortage'] == 37
-    assert detail['case']['recovery_offer']['component_gap_after_offer'] == 0
-    assert detail['case']['recovery_offer']['packing_scenarios'][0]['maximum_additional_units'] == 37
+    offer = main.store.get(workflow.issue)['recovery_offer']
+    assert 'recovery_offer' not in detail['case']
+    assert offer['component_gap_after_offer'] == 0
+    assert offer['packing_scenarios'][0]['maximum_additional_units'] == 37
     assert detail['case']['state'] == 'offer_reviewed'
     assert workflow.sent == []
 
@@ -88,9 +94,12 @@ def test_shift_calculator_excludes_night_and_past_hours():
     issue = {'shortage': 1000, 'affected_products': ['CE']}
     products = [{'id': 'CE', 'name': 'CE', 'remaining': 2000, 'rate_per_hour': 100}]
     plan = scenario(issue, products, '2030-11-24', 1000, '2030-11-23T10:00+01:00', 50000,
-                    as_of=aware('2030-11-24T19:00+01:00'))
+                    as_of=aware('2030-11-24T19:00+01:00'), policy=make_policy())
     assert plan['packing_scenarios'][0]['maximum_additional_units'] == 100
-    assert plan['value_approver'] == 'Category Lead'
+    assert plan['value_approver'] == 'Category Lead'          # from the (synthetic) approval policy
+    unknown = scenario(issue, products, '2030-11-24', 1000, '2030-11-23T10:00+01:00', 50000, as_of=aware('2030-11-24T19:00+01:00'))
+    assert unknown['value_approver'] == 'Approver to be confirmed by a person'
+    assert 'PP-07' not in str(plan['constraints'])
     late = scenario(issue, products, '2030-11-24', 1000, '2030-11-24T21:00+01:00', 100,
                     as_of=aware('2030-11-23T12:00+01:00'))
     assert late['component_gap_after_offer'] == 1000
@@ -119,3 +128,15 @@ def test_source_change_preserves_ambiguous_delivery_guard(workflow):
     main.store.save(workflow.issue['id'], case)
     workflow.issue['shortage'] = 500
     assert workflow.client.post('/api/issues/game-card-shortage/draft', json={}).status_code == 409
+
+
+def test_simulated_header_is_flagged_and_profile_contact_is_expected_sender(workflow, monkeypatch):
+    monkeypatch.delenv('LIO_GAME_CARD_RECIPIENT', raising=False)       # no override: fall back to the profile contact
+    workflow.issue['supplier'] = {'name': 'Synthetic supplier', 'contact_email': 'contact@example.invalid'}
+    raw = email(sender='contact@example.invalid').replace(b'Subject:', b'X-Lio-Simulated: yes\r\nSubject:', 1)
+    response = ingest(workflow, raw)
+    assert response.status_code == 200
+    assert response.json()['replies'][0]['simulated'] is True
+    # A sender that is not the profile contact is still refused.
+    other = ingest(workflow, email(sender='someone@example.invalid', message_id='<other@example.invalid>'))
+    assert other.status_code == 400

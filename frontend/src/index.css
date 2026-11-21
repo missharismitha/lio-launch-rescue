@@ -1,0 +1,204 @@
+@import 'tailwindcss';
+
+/* Launch Control design tokens. Semantic colours only. */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-band: #0a0a0a;
+  --color-band-fg: #f3f4f6;
+  --color-band-2: #a7acb8;
+  --color-page: #f3f4f6;
+  --color-card: #ffffff;
+  --color-ink: #111318;
+  --color-ink-2: #4b5060;
+  --color-line: #e3e5ea;
+  --color-line-2: #8a8f9e;
+  --color-accent: #8b8dff;
+  --color-accent-ink: #4a4dd1;
+  --color-accent-wash: #eeefff;
+  --color-ok: #177050;
+  --color-ok-wash: #e4f4ed;
+  --color-risk: #c2352b;
+  --color-risk-wash: #fbeae8;
+  --color-warn: #5b5f7a;
+  --color-warn-wash: #ecedf2;
+
+  --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'SF Pro Text', Roboto, sans-serif;
+  --radius-card: 14px;
+  --radius-control: 10px;
+  --shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04);
+  --shadow-sheet: 0 24px 64px -12px rgba(10, 10, 10, 0.25);
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* shadcn-style aliases */
+:root {
+  --background: var(--color-page);
+  --foreground: var(--color-ink);
+  --primary: var(--color-accent);
+  --ring: var(--color-accent-ink);
+  --radius: 10px;
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--color-page);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 22px;
+    font-variant-numeric: tabular-nums;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+  button {
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent-ink);
+    outline-offset: 2px;
+  }
+  .on-dark :focus-visible {
+    outline-color: var(--color-accent);
+  }
+}
+
+@layer components {
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  /* unknown is a first-class state: hatched, never a blank */
+  .hatch {
+    background-image: repeating-linear-gradient(135deg, transparent 0 4px, rgba(91, 95, 122, 0.22) 4px 5px);
+  }
+  .hatch-risk {
+    background-image: repeating-linear-gradient(135deg, rgba(194, 53, 43, 0.12) 0 4px, rgba(194, 53, 43, 0.5) 4px 6px);
+  }
+  .hairline {
+    box-shadow: inset 0 1px 0 var(--color-accent);
+  }
+  .skeleton {
+    background: var(--color-line);
+    border-radius: 8px;
+    animation: pulse-soft 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sheet-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.anim-sheet[data-state='open'] {
+  animation: sheet-in 280ms var(--ease-out-soft);
+}
+.anim-sheet[data-state='closed'] {
+  animation: sheet-out 200ms var(--ease-out-soft) forwards;
+}
+.anim-fade[data-state='open'] {
+  animation: fade-in 200ms var(--ease-out-soft);
+}
+.anim-fade[data-state='closed'] {
+  animation: fade-out 200ms var(--ease-out-soft) forwards;
+}
+.anim-toast {
+  animation: toast-in 180ms var(--ease-out-soft);
+}
+.spin {
+  animation: spin 800ms linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-sheet,
+  .anim-fade,
+  .anim-toast,
+  .spin,
+  .skeleton {
+    animation: none !important;
+  }
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 16mm;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

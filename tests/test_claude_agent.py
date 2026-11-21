@@ -35,7 +35,7 @@ def test_streams_tool_steps_and_returns_text(tmp_path, monkeypatch):
         {'type': 'result', 'is_error': False, 'result': '## Verdict\nno'}], seen)
     out = claude_agent.run({'id': 'i'}, tmp_path, steps.append)
     assert out['text'].startswith('## Verdict') and out['model'] == 'claude-test'
-    assert steps == ['Read notice.pdf']
+    assert steps == ['Read a supplier notice']
     cmd = seen['cmd']
     assert cmd[cmd.index('--tools') + 1] == 'Read,Grep,Glob'          # read-only tools only
     assert 'Bash' not in ' '.join(cmd) and 'Write' not in ' '.join(cmd)

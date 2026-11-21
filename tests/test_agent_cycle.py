@@ -12,7 +12,10 @@ def test_agent_reconciles_and_drafts_without_auto_send(workflow):
     assert case['state'] == 'drafted'
     assert main.agent_status['state'] == 'awaiting_human_review'
     assert not main.agent_status['running']
-    assert any('no model run claimed' in s['message'] for s in main.agent_status['steps'])
+    assert main.agent_status['steps'][-1]['message'] == 'Ready for your review'
+    from app import public
+    shown = [s['message'] for s in public.public_overview(main.overview())['agent']['steps']]
+    assert shown and all(not any(w in m.lower() for w in ('reconcil', 'provenance', 'model-directed', 'tool')) for m in shown)
     assert workflow.sent == []
     # Repeating a cycle preserves the existing draft and does not send.
     initial_events = main.store.events(workflow.issue['id'])

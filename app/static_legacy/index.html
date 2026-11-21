@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#14181d">
+  <title>Launch Control</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/print.css" media="print">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to decision</a>
+  <div id="app" aria-busy="true"></div>
+  <dialog id="drawer" class="drawer" aria-labelledby="drawer-title"></dialog>
+  <div id="print-brief" aria-hidden="true"></div>
+  <div id="toast" role="status" aria-live="polite" hidden></div>
+  <!-- Original simple geometry, drawn for Launch Control. -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v11H3zM14 10h4l3 4v3h-7M7 3v3M4 10h6"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></symbol>
+      <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="m12 3 8 3v7c0 4-8 8-8 8s-8-4-8-8V6zM8 12l3 3 5-6"/></symbol>
+      <symbol id="i-printer" viewBox="0 0 24 24"><path d="M7 8V3h10v5M7 17H3V9h18v8h-4M7 14h10v7H7zM17 11h1"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+      <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m10 6 6 6-6 6"/></symbol>
+    </defs>
+  </svg>
+</body>
+</html>

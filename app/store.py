@@ -42,7 +42,8 @@ class Store:
                 if case['state'] in ('sending', 'delivery_unknown'):
                     case['delivery_status'] = case['state']
                 self.event(issue['id'], 'source_changed', 'Evidence changed. Previous approval invalidated; regenerate and review the inquiry.')
-                case.update(state='review_required', draft=None, approver=None, approved_fingerprint=None, investigation=None, recovery_offer=None)
+                case.update(state='review_required', draft=None, approver=None, approved_fingerprint=None, investigation=None, recovery_offer=None,
+                            crew=None, escalation_approval=None)
             else:
                 self.event(issue['id'], 'detected', issue['summary'])
             case['source_fingerprint'] = current

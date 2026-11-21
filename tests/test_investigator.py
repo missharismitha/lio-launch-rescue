@@ -73,7 +73,7 @@ def test_tool_call_roundtrip_preserves_result_trace(tmp_path, monkeypatch, model
     assert result['text'] == 'Recovery remains unconfirmed.'
     assert result['at']
     assert result['tool_calls'] == [{'name': 'get_current_issue', 'arguments': {}}]
-    assert progress == ['Read the current reconciliation']
+    assert progress == ['Reviewed the stock numbers']
     output = next(x for x in calls[1]['input'] if x.get('type') == 'function_call_output')
     assert output['call_id'] == 'call-1'
     assert json.loads(output['output']) == ISSUE

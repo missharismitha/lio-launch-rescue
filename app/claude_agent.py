@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import threading
 from pathlib import Path
+from app import labels
 from app.sync import now
 
 SYSTEM = (
@@ -18,14 +19,16 @@ SYSTEM = (
     'Quantities in the issue JSON come from deterministic reconciliation; only contradict them by naming the conflicting file. '
     'Never invent supplier availability, prices, approvals or confirmations. Separate "arrives at airport/port" from "in the Hamburg warehouse" and from "packed". '
     'You cannot send email, order, book freight or approve spend; a human approves those. '
-    'Answer in markdown with exactly these sections: '
+    'Answer in markdown with exactly these sections, in this order: '
     '## Verdict (will Soony make Sunday 20:00 for this component, yes/no/unknown, one sentence) '
-    '## What I verified (bullets, each ending with the file name it came from) '
+    '## Recommended action (one sentence) '
+    '## Plan B options (max 3 bullets, each "**Short title** — one plain sentence", no jargon) '
+    '## What I verified (bullets, each ending with the file name it came from; for the server only, never shown in the UI) '
     '## Contradictions and unknowns '
-    '## Plan B options (ranked; for each: quantity, earliest warehouse arrival, cost, risk, what must be confirmed) '
     '## Message to supplier (written in the supplier\'s own language, then an English translation; a question, never an order) '
     '## Needs human approval (who signs, per the policy files). '
-    'Keep it under 450 words.')
+    'In Verdict, Recommended action and Plan B options never mention file names, paths or document quotes. '
+    'Keep the markdown under 450 words. ' + labels.OPTIONS_JSON_PROMPT)
 
 
 def available() -> bool:
@@ -65,10 +68,10 @@ def run(issue: dict, root: Path, progress=None, question=None, timeout=420) -> d
             elif kind == 'assistant':
                 for block in event.get('message', {}).get('content', []):
                     if block.get('type') == 'tool_use' and len(trace) < 40:
-                        name, label = block.get('name', 'tool'), describe(block.get('input', {}))
+                        name = block.get('name', 'tool')
                         trace.append({'name': name, 'arguments': block.get('input', {})})
                         if progress:
-                            progress(f'{name} {label}'.strip())
+                            progress(labels.step_label(name, block.get('input', {})))
             elif kind == 'result':
                 final = event
     finally:

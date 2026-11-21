@@ -1,0 +1,20 @@
+/* Only the reviewed decision brief prints. No message bodies or controls. */
+@page { size: A4; margin: 16mm; }
+html,body { background: white !important; color: black !important; }
+body { font-size: 11pt; line-height: 1.35; }
+body > *:not(#print-brief),dialog,dialog::backdrop { display: none !important; }
+#print-brief { display: block !important; max-width: 100%; }
+#print-brief * { color: black !important; background: white !important; box-shadow: none !important; }
+#print-brief h1 { font-size: 20pt; margin-bottom: 5mm; }
+#print-brief h2,#print-brief h3 { font-size: 13pt; margin: 5mm 0 2mm; }
+#print-brief h4 { margin: 3mm 0 1mm; }
+#print-brief button,#print-brief svg { display: none !important; }
+#print-brief section { display: block; padding: 0; }
+#print-brief .rec { font-size: 14pt; line-height: 1.25; margin: 3mm 0; }
+#print-brief .chip { border: 1px solid black; padding: 1mm 2mm; }
+#print-brief dl { border: 0; margin: 3mm 0; padding: 0; }
+#print-brief dl > div { display: flex; justify-content: space-between; padding: 1.5mm 0; border-bottom: 1px solid #bbb; break-inside: avoid; }
+#print-brief dt,#print-brief dd { font-size: 11pt; margin: 0; }
+#print-brief .plain { padding-left: 5mm; list-style: disc; display: block; }
+#print-brief p,#print-brief li { margin-bottom: 1.5mm; }
+#print-brief .note { font-size: 9pt; }

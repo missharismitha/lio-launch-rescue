@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 import requests
 import pymupdf
+from app import labels
 from app.sync import now, safe_path
 
 TOOLS = [
@@ -43,14 +44,26 @@ def document_text(path: Path) -> str:
     return 'This source needs visual human review. No OCR result is available.'
 
 
+def parse_options(text):
+    """Option dicts from the last fenced json block in model text. Defensive: any problem gives []."""
+    import re
+    if not isinstance(text, str):
+        return []
+    blocks = re.findall(r'```(?:json)?\s*(.*?)```', text, re.S | re.I)
+    for block in reversed(blocks):
+        try:
+            data = json.loads(block.strip())
+        except ValueError:
+            continue
+        if isinstance(data, dict):
+            data = data.get('options')
+        if isinstance(data, list):
+            return [item for item in data if isinstance(item, dict)][:3]
+    return []
+
+
 def describe_call(name, args):
-    if name == 'get_current_issue':
-        return 'Read the current reconciliation'
-    if name == 'read_document':
-        return 'Opened ' + str(args.get('path', '')).split('/')[-1]
-    if name == 'search_documents':
-        return 'Searched all documents for "' + str(args.get('query', ''))[:60] + '"'
-    return name
+    return labels.step_label(name, args)
 
 
 def run(issue: dict, root: Path, progress=None, question=None) -> dict:
@@ -66,15 +79,16 @@ def run(issue: dict, root: Path, progress=None, question=None) -> dict:
         'Do not invent availability, quotes, delivery confirmations, quality concessions, approvals or completed actions. '
         'Do not recalculate quantities differently from the deterministic issue without explicitly identifying contradictory evidence. '
         'Distinguish arrival at port/airport from warehouse delivery and time to pack. '
-        'Provide: verified findings with relative source paths; unknowns; ranked feasible investigations; '
-        'questions to supplier; who must approve, based on supplied policy. If recovery is unconfirmed say so. '
         'You cannot send email, book freight, change stock, or approve expenditure. Limit yourself to investigation. '
-        'Finish with one specific recommended next action and its preconditions. '
-        'Answer in markdown with exactly these sections: ## Verdict (will Soony make Sunday 20:00 for this component: yes/no/unknown, one sentence) '
-        '## What I verified (bullets, each ending with its source file name) ## Contradictions and unknowns '
-        '## Plan B options (ranked; quantity, earliest warehouse arrival, cost, risk, what must be confirmed) '
+        'Answer in markdown with exactly these sections, in this order: ## Verdict (will Soony make Sunday 20:00 for this component: yes/no/unknown, one sentence) '
+        '## Recommended action (one sentence) '
+        '## Plan B options (max 3 bullets, each "**Short title** — one plain sentence", no jargon) '
+        '## What I verified (bullets, each ending with its source file name; for the server only) '
+        '## Contradictions and unknowns '
         '## Message to supplier (in the supplier language, then English; a question, never an order) '
-        '## Needs human approval (who signs, per policy files). Keep it under 450 words.')
+        '## Needs human approval (who signs, per policy files). '
+        'In Verdict, Recommended action and Plan B options never mention file names, paths or document quotes. '
+        'If recovery is unconfirmed say so. Keep the markdown under 450 words. ' + labels.OPTIONS_JSON_PROMPT)
     messages = [{'role': 'user', 'content': f"Investigate {issue['id']}. Use get_current_issue first. " + (question or 'Propose the next evidence-backed recovery step.')}]
     trace = []
 

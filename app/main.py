@@ -11,7 +11,7 @@ import ssl
 import threading
 
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from pydantic import BaseModel, Field
@@ -20,10 +20,10 @@ from app import config
 from app.engine import analyze
 from app.store import Store, fingerprint
 from app.sync import PortalSync, safe_path, now
-from app import investigator
+from app import investigator, crew, actions, agent_loop
 from app.mailbox import Inbox
 from app.recovery import scenario, aware
-from app import chat
+from app import access, labels, public
 
 lock = threading.RLock()
 store = Store(config.STATE_DIR / 'cases.sqlite3')
@@ -78,7 +78,7 @@ def issue_detail(issue_id):
     if issue is None:
         raise HTTPException(404, 'Issue not found in current evidence')
     return {**issue, 'case': store.get(issue), 'events': store.events(issue_id),
-            'integrations': config.integrations(), 'replies': current_inbox().list(issue_id), 'chat': store.chat(issue_id)}
+            'integrations': config.integrations(), 'replies': current_inbox().list(issue_id)}
 
 
 async def poll():
@@ -95,6 +95,9 @@ async def poll():
 
 @asynccontextmanager
 async def lifespan(app):
+    if not access.enabled() and os.getenv('LIO_ALLOWED_HOSTS', '').strip():
+        raise RuntimeError('LIO_ALLOWED_HOSTS exposes this service beyond loopback but LIO_ACCESS_CODE is not set. '
+                           'Refusing to start unauthenticated.')
     await asyncio.to_thread(refresh)
     task = asyncio.create_task(poll())
     yield
@@ -105,21 +108,78 @@ async def lifespan(app):
         pass
 
 
-app = FastAPI(title='Lio Launch Rescue', lifespan=lifespan)
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver'])
+app = FastAPI(title='Lio Launch Rescue', lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=['127.0.0.1', 'localhost', 'testserver'] + [
+    h.strip() for h in os.getenv('LIO_ALLOWED_HOSTS', '').split(',') if h.strip()])
+
+SECURITY_HEADERS = {
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'no-referrer',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; "
+                               "frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+    'Cache-Control': 'no-store',
+}
+
+
+def secured(response):
+    for key, value in SECURITY_HEADERS.items():
+        response.headers[key] = value
+    return response
 
 
 @app.middleware('http')
-async def local_boundary(request: Request, call_next):
-    # This MVP has no login system. Bind loopback and reject cross-origin mutations.
+async def boundary(request: Request, call_next):
+    path = request.url.path
+    if access.enabled() and path not in access.PUBLIC and not access.valid_cookie(request.cookies.get(access.COOKIE)):
+        if path.startswith('/api/'):
+            return secured(JSONResponse({'detail': 'Access code required'}, status_code=401))
+        return secured(RedirectResponse('/login', status_code=303))
     if request.method not in ('GET', 'HEAD', 'OPTIONS'):
         origin = request.headers.get('origin')
         if origin and origin.rstrip('/') != str(request.base_url).rstrip('/'):
-            from fastapi.responses import JSONResponse
-            return JSONResponse({'detail': 'Cross-origin actions are not allowed'}, status_code=403)
-    response = await call_next(request)
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['Cache-Control'] = 'no-store'
+            return secured(JSONResponse({'detail': 'Cross-origin actions are not allowed'}, status_code=403))
+    return secured(await call_next(request))
+
+
+def cookie_secure(request: Request):
+    return (request.url.scheme == 'https' or request.headers.get('x-forwarded-proto', '').lower() == 'https'
+            or os.getenv('LIO_COOKIE_SECURE', '').lower() == 'true')
+
+
+@app.get('/login')
+def login_page(request: Request):
+    if not access.enabled() or access.valid_cookie(request.cookies.get(access.COOKIE)):
+        return RedirectResponse('/', status_code=303)
+    return HTMLResponse(access.LOGIN_HTML)
+
+
+class Login(BaseModel):
+    code: str = Field(default='', max_length=200)
+
+
+@app.post('/api/login')
+def login(body: Login, request: Request):
+    if not access.enabled():
+        return JSONResponse({'ok': True})
+    ip = request.client.host if request.client else 'unknown'
+    outcome = access.attempt(ip, body.code)
+    if outcome == 'limited':
+        return JSONResponse({'detail': 'Too many tries. Wait a few minutes.'}, status_code=429)
+    if outcome != 'ok':
+        return JSONResponse({'detail': 'That code is wrong.'}, status_code=401)
+    response = JSONResponse({'ok': True})
+    response.set_cookie(access.COOKIE, access.make_cookie(), max_age=access.LIFETIME, httponly=True,
+                        samesite='strict', path='/', secure=cookie_secure(request))
+    return response
+
+
+@app.post('/api/logout')
+def logout(request: Request):
+    access.revoke(request.cookies.get(access.COOKIE))
+    response = JSONResponse({'ok': True})
+    response.delete_cookie(access.COOKIE, path='/')
     return response
 
 
@@ -131,31 +191,100 @@ def health():
 @app.get('/api/overview')
 def get_overview():
     with lock:
-        return overview()
+        return public.public_overview(overview())
 
 
 @app.post('/api/refresh')
 def local_refresh():
-    return refresh()
+    return public.public_overview(refresh())
 
 
 @app.post('/api/sync')
 def portal_refresh():
-    return refresh(sync=True)
+    return public.public_overview(refresh(sync=True))
 
 
 @app.get('/api/issues/{issue_id}')
 def get_issue(issue_id: str):
     with lock:
-        return issue_detail(issue_id)
+        return public.public_detail(issue_detail(issue_id))
 
 
 def recipient_for(issue):
-    if issue['material_id'] == 'CMP-GAM-001':
-        return os.getenv('LIO_GAME_CARD_RECIPIENT', '')
-    if issue['material_id'] == 'CMP-GAM-008':
-        return os.getenv('LIO_ART_BOOK_RECIPIENT', '')
-    return ''
+    # An explicit override wins; otherwise the supplier's contact from its profile (server-side only,
+    # never returned to the browser). Used as the expected sender when importing replies.
+    override = {'CMP-GAM-001': 'LIO_GAME_CARD_RECIPIENT', 'CMP-GAM-008': 'LIO_ART_BOOK_RECIPIENT'}.get(issue.get('material_id'))
+    if override and os.getenv(override):
+        return os.getenv(override, '')
+    supplier = issue.get('supplier') or {}
+    return str(supplier.get('contact_email') or '') if isinstance(supplier, dict) else ''
+
+
+def supplier_option(case):
+    """The option the crew would ask the supplier about, when its result matches the current evidence."""
+    data = case.get('crew') if isinstance(case.get('crew'), dict) else None
+    if not data or data.get('source_fingerprint') != case.get('source_fingerprint'):
+        return None
+    options = [o for o in data.get('options') or [] if o.get('mode') in ('air', 'sea', 'road')]
+    return next((o for o in options if o.get('feasible') == 'yes'), None) or (options[0] if options else None)
+
+
+def pricing_category(detail):
+    try:
+        from app import pricing
+        return pricing.component_category(config.DATA_DIR, detail.get('material_id'))
+    except Exception:
+        return None
+
+
+def release_draft(case):
+    """The crew's inquiry to the supplier that holds goods, when the top option is a release and the result is current.
+
+    Its recipient stays empty: the application never addresses it, and sending stays blocked until a person registers one.
+    """
+    data = case.get('crew') if isinstance(case.get('crew'), dict) else None
+    if not data or data.get('source_fingerprint') != case.get('source_fingerprint') or data.get('top_kind') != 'release':
+        return None
+    drafts = data.get('supplier_drafts') or []
+    first = drafts[0] if drafts and isinstance(drafts[0], dict) else None
+    return {'to': '', 'subject': first['subject'], 'body': first['body'], 'manual_send': True} if first else None
+
+
+def refresh_crew(issue_id, investigation=None, investigate=None, agent=False):
+    """Run the agent crew on the current evidence and keep its result in the case. Never raises."""
+    try:
+        with lock:
+            issue = next((i for i in snapshot.get('issues', []) if i['id'] == issue_id), None)
+            if issue is None:
+                return None
+            source_fingerprint = fingerprint(issue)
+            products = [dict(p) for p in snapshot.get('products', [])]
+            hours = (snapshot.get('pack_status') or {}).get('hours_left')
+            launch = snapshot.get('launch_date')
+            as_of_label = (snapshot.get('pack_status') or {}).get('as_of')
+            case = store.get(issue)
+            inv = investigation if investigation is not None else case.get('investigation')
+            if isinstance(inv, dict) and inv.get('source_fingerprint') not in (None, source_fingerprint):
+                inv = None
+            previous = case.get('crew') if isinstance(case.get('crew'), dict) else None
+            if (not agent and previous and previous.get('run_mode') in ('agent', 'agent_partial')
+                    and previous.get('source_fingerprint') == source_fingerprint):
+                return previous  # one agent run per evidence state: the rule path must not overwrite it
+        result = crew.run(issue_id, issue, products, hours, config.DATA_DIR, store.path.parent, investigation=inv,
+                          investigate=investigate, launch=launch, source_fingerprint=source_fingerprint,
+                          as_of_label=as_of_label, operator=agent_loop.operate if agent else None)
+        with lock:
+            current = issue_detail(issue_id)
+            case = current['case']
+            if case['source_fingerprint'] != source_fingerprint:
+                return None
+            if agent and result.get('run_mode') == 'rule_based' and previous and previous.get('run_mode') in ('agent', 'agent_partial'):
+                case['crew_last_good'] = previous  # the model failed this time: keep the last good agent run, stamped with its own time
+            case['crew'] = result
+            store.save(issue_id, case)
+        return result
+    except Exception:
+        return None
 
 
 @app.post('/api/issues/{issue_id}/draft')
@@ -165,22 +294,22 @@ def draft(issue_id: str):
         case = issue['case']
         if case.get('sent_at') or case.get('delivery_status') in ('sending', 'delivery_unknown') or case['state'] in ('sending', 'sent', 'delivery_unknown'):
             raise HTTPException(409, 'An inquiry has already been sent or needs delivery reconciliation')
-        evidence = '\n'.join('- ' + e.get('label', e['path']) + ': ' + e.get('excerpt', '')[:600]
-                             for e in issue.get('evidence', [])[:5])
-        body = (f"Hello,\n\nWe are investigating supply for {issue['material_id']} at Soony's Hamburg site.\n\n"
-                f"Current evidence: {issue['summary']}\n"
-                f"Estimated uncovered quantity: {issue.get('shortage', 'not established')}.\n\n"
-                "Please confirm the actual available and shipped quantities, earliest delivery date and time at Hamburg, "
-                "any faster transport or available-stock option, its cost and currency, and constraints. "
-                "Please distinguish a carrier arrival from delivery at the packing site.\n\n"
-                "This is an availability inquiry, not an order, booking, quality concession or spending commitment.\n\n"
-                f"Evidence references for verification:\n{evidence}\n\nThank you,\nSoony launch team")
+        # Supplier-facing text: only facts from the supplier's own advice plus the ask (see app/actions.py).
+        # Never include internal stock, requirements, memos, priorities, prices or approvers.
+        stored = release_draft(case)
+        built = stored or actions.supplier_draft(issue, supplier_option(case), snapshot.get('launch_date'), recipient_for(issue), issue_id)
         case.update(state='drafted', approver=None, approved_fingerprint=None,
-                    draft={'to': recipient_for(issue), 'subject': f"[Lio {issue_id}] Launch supply verification — {issue['material_id']}",
-                           'body': body})
+                    draft=built)
         store.save(issue_id, case)
         store.event(issue_id, 'drafted', 'Prepared an evidence-based supplier inquiry. No email sent.')
-        return issue_detail(issue_id)
+        return public.public_detail(issue_detail(issue_id))
+
+
+def record_step(issue_id, label):
+    label = label if label in labels.GENERIC else 'Checked a record'
+    store.event(issue_id, 'agent_tool', f'Agent: {label}')
+    if agent_status.get('running'):
+        agent_status['steps'].append({'at': now(), 'message': label})
 
 
 @app.post('/api/issues/{issue_id}/investigate')
@@ -194,7 +323,7 @@ def investigate(issue_id: str):
         raise HTTPException(409, 'Set OPENAI_API_KEY and LIO_AI_MODEL locally to enable AI investigation.')
     try:
         result = investigator.run(issue, config.DATA_DIR,
-                                  lambda name: (store.event(issue_id, 'agent_tool', f'Agent: {name}'), agent_status['steps'].append({'at': now(), 'message': f'Agent: {name}'}) if agent_status.get('running') else None))
+                                  lambda label: record_step(issue_id, label))
     except (ValueError, OSError) as error:
         raise HTTPException(502, str(error))
     except Exception:
@@ -208,7 +337,9 @@ def investigate(issue_id: str):
         case['investigation'] = result
         store.save(issue_id, case)
         store.event(issue_id, 'investigated', 'Model investigation completed. Recommendations require human verification; no email sent.')
-        return issue_detail(issue_id)
+    refresh_crew(issue_id)
+    with lock:
+        return public.public_detail(issue_detail(issue_id))
 
 
 class Approval(BaseModel):
@@ -224,10 +355,54 @@ def approve(issue_id: str, approval: Approval):
         if not approval.approver.strip() or case['state'] not in ('drafted', 'approved') or not case.get('draft'):
             raise HTTPException(409, 'Generate and review a current inquiry before approving')
         case.update(state='approved', approver=approval.approver.strip(), approval_note=approval.note,
-                    approved_fingerprint=case['source_fingerprint'])
+                    approved_fingerprint=case['source_fingerprint'], approved_draft_hash=public.draft_hash(case['draft']))
         store.save(issue_id, case)
         store.event(issue_id, 'approved', f"{approval.approver.strip()} approved this inquiry only. {approval.note}")
-        return issue_detail(issue_id)
+        return public.public_detail(issue_detail(issue_id))
+
+
+@app.post('/api/issues/{issue_id}/escalation/approve')
+def approve_escalation(issue_id: str, approval: Approval):
+    """A named person approves the INTERNAL escalation draft. The application never sends it."""
+    with lock:
+        issue = issue_detail(issue_id)
+        case = issue['case']
+        data = case.get('crew') if isinstance(case.get('crew'), dict) else None
+        draft_ = data.get('escalation') if data else None
+        if not draft_ or data.get('source_fingerprint') != case['source_fingerprint']:
+            raise HTTPException(409, 'Run the agent on the current evidence and review the escalation before approving')
+        name = approval.approver.strip()
+        if len(name) < 2:
+            raise HTTPException(422, 'A named approver is required')
+        case['escalation_approval'] = {'approver': name, 'note': approval.note, 'at': now(),
+                                       'source_fingerprint': case['source_fingerprint'],
+                                       'escalation_hash': public.escalation_hash(draft_)}
+        store.save(issue_id, case)
+        store.event(issue_id, 'escalation_approved', f"{name} approved the escalation draft. It is not sent by the application.")
+        return public.public_detail(issue_detail(issue_id))
+
+
+class WhatIf(BaseModel):
+    arrive_in_hours: float = Field(strict=True, ge=0, le=72, allow_inf_nan=False)
+
+
+@app.post('/api/issues/{issue_id}/whatif')
+def what_if(issue_id: str, body: WhatIf):
+    with lock:
+        issue = next((i for i in snapshot.get('issues', []) if i['id'] == issue_id), None)
+        if issue is None:
+            raise HTTPException(404, 'Issue not found in current evidence')
+        products = [dict(p) for p in snapshot.get('products', [])]
+        hours = (snapshot.get('pack_status') or {}).get('hours_left')
+    if not isinstance(hours, (int, float)):
+        raise HTTPException(409, 'The packing hours left are not known yet')
+    try:
+        result = crew.whatif_for(issue, products, hours, body.arrive_in_hours)
+    except Exception:
+        raise HTTPException(409, 'The scenario could not be worked out from the current records')
+    if result is None:
+        raise HTTPException(409, 'No edition is short, so there is nothing to simulate')
+    return public.public_whatif(result)
 
 
 @app.post('/api/issues/{issue_id}/send')
@@ -237,7 +412,9 @@ def send(issue_id: str):
         case = issue['case']
         if not config.integrations()['email_enabled']:
             raise HTTPException(409, 'Supplier email is not enabled. Configure a registered sender and SMTP transport first.')
-        if case.get('sent_at') or case.get('delivery_status') in ('sending', 'delivery_unknown') or case['state'] != 'approved' or case.get('approved_fingerprint') != case['source_fingerprint']:
+        if (case.get('sent_at') or case.get('delivery_status') in ('sending', 'delivery_unknown') or case['state'] != 'approved'
+                or case.get('approved_fingerprint') != case['source_fingerprint']
+                or case.get('approved_draft_hash') != public.draft_hash(case.get('draft'))):
             raise HTTPException(409, 'Current evidence and inquiry require approval before sending')
         outgoing = case['draft']
         destination = recipient_for(issue)
@@ -265,11 +442,13 @@ def send(issue_id: str):
         case.update(state='sent', sent_at=now())
         store.save(issue_id, case)
         store.event(issue_id, 'sent', 'SMTP accepted the inquiry. Supplier confirmation and shipment remain unverified.')
-        return issue_detail(issue_id)
+        return public.public_detail(issue_detail(issue_id))
 
 
 @app.get('/api/evidence')
 def evidence(path: str):
+    if os.getenv('LIO_EXPOSE_SOURCES', '').lower() != 'true':
+        raise HTTPException(404, 'Not found')
     try:
         target = safe_path(config.DATA_DIR, path)
     except ValueError:
@@ -288,7 +467,9 @@ def check_inbox():
 
 @app.post('/api/inbox/check')
 def inbox_check():
-    return check_inbox()
+    check_inbox()
+    with lock:
+        return public.public_agent(agent_status)
 
 
 @app.post('/api/issues/{issue_id}/replies/import')
@@ -306,7 +487,7 @@ async def import_reply(issue_id: str, request: Request):
             # Receiving a reply cannot reauthorize an old draft or mark a shipment confirmed.
             case.update(state='reply_review_required', approved_fingerprint=None)
             store.save(issue_id, case)
-        return issue_detail(issue_id)
+        return public.public_detail(issue_detail(issue_id))
 
 
 class OfferReview(BaseModel):
@@ -329,7 +510,9 @@ def review_reply(issue_id: str, review: OfferReview):
         if not review.reviewer.strip() or not review.note.strip():
             raise HTTPException(422, 'Reviewer and verification note are required')
         try:
-            result = scenario(detail, snapshot['products'], snapshot['launch_date'], review.quantity, review.arrival_at, review.cost_eur)
+            result = scenario(detail, snapshot['products'], snapshot['launch_date'], review.quantity, review.arrival_at, review.cost_eur,
+                              policy=crew.cached_policy(config.DATA_DIR),
+                              category=pricing_category(detail))
         except (ValueError, TypeError):
             raise HTTPException(422, 'Arrival must be ISO 8601 with an explicit timezone and launch date must be available')
         result.update(reviewer=review.reviewer.strip(), note=review.note, reply_id=reply['id'], reviewed_at=now(),
@@ -337,46 +520,11 @@ def review_reply(issue_id: str, review: OfferReview):
         case.update(recovery_offer=result, state='offer_reviewed', approved_fingerprint=None)
         store.save(issue_id, case)
         store.event(issue_id, 'offer_reviewed', f"{review.reviewer.strip()} reviewed a supplier offer. Scenario updated; recorded stock and orders unchanged.")
-        return issue_detail(issue_id)
+        return public.public_detail(issue_detail(issue_id))
 
 
 class AgentRun(BaseModel):
     issue_id: str = 'game-card-shortage'
-
-
-class ChatMessage(BaseModel):
-    text: str = Field(min_length=1, max_length=2000)
-
-
-@app.post('/api/issues/{issue_id}/chat')
-def chat_message(issue_id: str, message: ChatMessage):
-    question = message.text.strip()
-    if not question:
-        raise HTTPException(422, 'Write a question before sending')
-    with lock:
-        issue = next((i for i in snapshot.get('issues', []) if i['id'] == issue_id), None)
-        if issue is None:
-            raise HTTPException(404, 'Case not found')
-        case = store.get(issue)
-        version = case['source_fingerprint']
-        local_overview = dict(snapshot)
-    mode = 'evidence'
-    if config.integrations()['ai_enabled']:
-        try:
-            response = investigator.run(issue, config.DATA_DIR, question=question)
-            answer = response['text']
-            mode = 'model'
-        except Exception:
-            raise HTTPException(502, 'Model response failed. Your case is unchanged; try again or review the linked sources.')
-    else:
-        answer = chat.answer(question, issue, case, local_overview)
-    with lock:
-        detail = issue_detail(issue_id)
-        if detail['case']['source_fingerprint'] != version:
-            raise HTTPException(409, 'Sources changed while answering. Ask again using the current case.')
-        store.chat_turn(issue_id, question, answer, mode, version)
-        store.event(issue_id, 'question_answered', 'Answered a case question from ' + ('the configured model.' if mode == 'model' else 'the source records. No model was invoked.'))
-        return issue_detail(issue_id)
 
 
 def agent_cycle(issue_id):
@@ -384,30 +532,39 @@ def agent_cycle(issue_id):
         def step(message):
             with lock:
                 agent_status['steps'].append({'at': now(), 'message': message})
-        step('Checking portal changes and reconciling customer sources.')
+        step('Checking for new data')
         refresh(sync=bool(config.PORTAL_TOKEN))
-        step('Checking supplier replies; no outbound messages are sent automatically.')
+        step('Reading the records')
         if config.integrations()['inbox_enabled']:
             check_inbox()
         with lock:
             current = issue_detail(issue_id)
         if current.get('shortage', 0) <= 0:
-            step('No uncovered component quantity in this case. Review the source and other constraints.')
+            step('Ready for your review')
             agent_status['state'] = 'review_findings'
             return
-        if config.integrations()['ai_enabled']:
-            step('Investigating evidence with model-directed read-only tools.')
-            investigate(issue_id)
-            step('Saved a model investigation with tool provenance.')
+        failed = None
+        use_agent = bool(config.integrations()['ai_enabled'] and agent_loop.available())
+        if use_agent:
+            step('Weighing the options')
+        elif config.integrations()['ai_enabled']:
+            step('Weighing the options')
+            try:
+                investigate(issue_id)
+            except Exception:
+                def failed():  # the crew traces this as 'fell back' and uses rule-based options
+                    raise RuntimeError('model unavailable')
+            step('Weighing the options')
         else:
-            step('Evidence reconciliation complete. Model investigation requires a configured key and model; no model run claimed.')
+            step('Weighing the options')
+        refresh_crew(issue_id, investigate=failed, agent=use_agent)
         with lock:
             current = issue_detail(issue_id)
             if not current['case'].get('sent_at') and not current['case'].get('draft') and current['case']['state'] not in ('sent', 'sending', 'delivery_unknown', 'reply_review_required', 'offer_reviewed'):
                 draft(issue_id)
-                step('Prepared an evidence-based availability inquiry for named human approval.')
+                step('Drafting the request')
         agent_status['state'] = 'awaiting_human_review'
-        step('Waiting for review. No order, freight booking or supplier email has been sent by this cycle.')
+        step('Ready for your review')
     except Exception:
         agent_status.update(state='needs_attention', error='Agent cycle could not complete. Check connection status and current evidence; no automatic send occurred.')
     finally:
@@ -421,7 +578,7 @@ def run_agent(run: AgentRun):
             raise HTTPException(409, 'Agent is already running')
         agent_status.update(running=True, state='investigating', steps=[], error=None)
         threading.Thread(target=agent_cycle, args=(run.issue_id,), daemon=True).start()
-        return dict(agent_status)
+        return public.public_agent(agent_status)
 
 
 app.mount('/static', StaticFiles(directory=Path(__file__).parent / 'static'), name='assets')

@@ -78,6 +78,7 @@ class Inbox:
         record = {'id': digest, 'message_id': message_id, 'issue_id': issue['id'], 'sender': senders[0][1],
                   'subject': subject, 'body': body[:30000], 'received_at': now(), 'transport': transport,
                   'sender_header_matched': True, 'identity_verified': False, 'candidates': candidates(body),
+                  'simulated': str(message.get('X-Lio-Simulated', '')).strip().casefold() == 'yes',
                   'review_status': 'pending', 'source_fingerprint': issue.get('_fingerprint')}
         self.directory.mkdir(parents=True, exist_ok=True)
         (self.directory / (digest + '.eml')).write_bytes(raw)
