@@ -30,8 +30,8 @@ export function ApprovalFlow({ target, d }: { target: ApprovalTarget; d: Detail 
   };
 
   return (
-    <div ref={box} role="group" aria-label="Approval" data-testid="approval-flow" className="grid gap-3 rounded-card border border-accent-ink bg-accent-wash p-4">
-      <p className="m-0 text-[13px] font-semibold text-accent-ink">Step {step} of 2</p>
+    <div ref={box} role="group" aria-label="Approval" data-testid="approval-flow" className="grid gap-3 border-t-2 border-ink pt-4">
+      <p className="m-0 text-[14px] font-semibold text-ink-2">Step {step} of 2</p>
       {step === 1 ? (
         <>
           <p className="m-0">Read the message to {to} above. Approving does not send anything.</p>
@@ -47,7 +47,7 @@ export function ApprovalFlow({ target, d }: { target: ApprovalTarget; d: Detail 
       ) : (
         <>
           <div className="grid gap-1">
-            <label htmlFor="name-input" className="text-[13px] font-semibold">
+            <label htmlFor="name-input" className="text-[14px] font-semibold">
               Your name
             </label>
             <input
@@ -59,7 +59,7 @@ export function ApprovalFlow({ target, d }: { target: ApprovalTarget; d: Detail 
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void submit();
               }}
-              className="min-h-11 rounded-control border border-line-2 bg-card px-3"
+              className="min-h-11 rounded-control border border-line-2 bg-white px-3"
             />
           </div>
           <div className="flex flex-wrap gap-2">

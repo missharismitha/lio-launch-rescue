@@ -127,3 +127,10 @@ export function whatIfSentence(d: Detail, o: Overview, hours: number, res: WhatI
 
 export const approverLabel = (a?: Approver | null): string =>
   !a || !a.role ? 'unknown' : a.vacancy ? `${a.role}, seat vacant` : a.provisional ? `${a.name || a.role}, provisional` : a.name || a.role;
+
+/* the plain sentence under the title: what is left of the recommendation after its first sentence */
+export function cardLead(t?: string | null): string | null {
+  if (!t) return null;
+  const parts = String(t).replace(/^First action:\s*/i, '').split(/(?<=[a-z0-9)])\.\s+(?=[A-Z])/);
+  return parts.length > 1 ? parts[1].replace(/\.$/, '') + '.' : null;
+}

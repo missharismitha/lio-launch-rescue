@@ -45,7 +45,7 @@ export function Toaster() {
           onMouseLeave={() => setPaused(false)}
           onFocus={() => setPaused(true)}
           onBlur={() => setPaused(false)}
-          className="anim-toast pointer-events-auto max-w-md rounded-control bg-band px-4 py-3 text-[14px] text-band-fg shadow-sheet"
+          className="anim-toast pointer-events-auto max-w-md rounded-control bg-ink px-4 py-3 text-[14px] text-white"
         >
           {text}
         </div>

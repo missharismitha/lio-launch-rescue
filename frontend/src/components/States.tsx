@@ -11,12 +11,10 @@ export function Skeleton() {
   if (!show) return <div aria-busy="true" className="min-h-screen" />;
   return (
     <div data-testid="skeleton" role="status" aria-label="Loading" className="min-h-screen">
-      <div className="bg-band px-4 py-6 sm:px-8">
-        <div className="skeleton mx-auto h-11 max-w-6xl opacity-30" />
-      </div>
-      <div className="mx-auto grid max-w-6xl gap-4 px-4 py-6 sm:px-8">
+      <div className="mx-auto grid max-w-[1120px] gap-6 px-4 py-16 sm:px-8">
+        <div className="skeleton h-4 w-64" />
+        <div className="skeleton h-16 w-72" />
         <div className="skeleton h-40" />
-        <div className="skeleton h-24" />
       </div>
     </div>
   );
@@ -24,7 +22,7 @@ export function Skeleton() {
 
 export function EmptyState({ message = "Waiting for Soony's data." }: { message?: string }) {
   return (
-    <p data-testid="empty-state" className="rounded-card border border-line bg-card p-6 text-ink-2">
+    <p data-testid="empty-state" className="py-8 text-ink-2">
       {message}
     </p>
   );

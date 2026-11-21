@@ -4,9 +4,8 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "prebuild": "node ../scripts/clean-assets.mjs",
     "dev": "vite",
-    "build": "vite build",
+    "build": "node ../scripts/clean-assets.mjs && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },

@@ -22,15 +22,15 @@ function Dashboard({ d, o }: { d: Detail; o: Overview }) {
   return (
     <>
       <Header d={d} o={o} />
-      <main id="main" className="mx-auto grid max-w-6xl gap-4 px-4 py-4 sm:px-8 sm:py-6 lg:grid-cols-12 lg:gap-6 print:hidden">
-        <div className="grid content-start gap-4 lg:col-span-7">
+      <main id="main" className="mx-auto grid max-w-[1120px] gap-8 px-4 pb-16 sm:px-8 sm:pb-24 lg:grid-cols-12 lg:gap-x-16 print:hidden">
+        <div className="grid content-start gap-8 sm:gap-14 lg:col-span-7">
           <DecisionCard d={d} o={o} />
           <PackingCard d={d} o={o} />
           <OptionList d={d} />
         </div>
-        <div className="grid content-start gap-4 lg:col-span-5">
-          <Card className="hidden gap-3 p-5 lg:grid" aria-label="Agent crew">
-            <h2 className="m-0 text-[15px] font-semibold">Agent crew</h2>
+        <div className="grid content-start gap-8 sm:gap-14 lg:col-span-5">
+          <Card className="hidden gap-4 border-t border-line pt-8 lg:grid" aria-label="What the agent did">
+            <h2 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em]">What the agent did</h2>
             {hasAgentRows || o.agent?.running ? <AgentRail d={d} o={o} /> : <p className="m-0 text-ink-2">The agent has not run yet.</p>}
           </Card>
           <HoldNote d={d} />
@@ -58,7 +58,7 @@ function Shell() {
     return (
       <>
         <Header d={null} o={overview} />
-        <main id="main" className="mx-auto max-w-6xl px-4 py-6 sm:px-8">
+        <main id="main" className="mx-auto max-w-[1120px] px-4 py-6 sm:px-8">
           <EmptyState />
         </main>
       </>
@@ -76,7 +76,7 @@ export default function App() {
       <LazyMotion features={domAnimation} strict>
         <LaunchProvider>
           <UiProvider>
-            <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[80] focus:rounded-control focus:bg-accent focus:px-3 focus:py-2 focus:text-band">
+            <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[80] focus:rounded-control focus:bg-ink focus:px-3 focus:py-2 focus:text-white">
               Skip to decision
             </a>
             <Shell />

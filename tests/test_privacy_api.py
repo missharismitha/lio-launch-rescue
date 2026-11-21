@@ -182,7 +182,9 @@ def test_ui_source_has_no_document_links():
     assert source
     for token in ('dangerouslySetInnerHTML', 'innerHTML', '"Open"', '.sources', '/api/evidence'):
         assert token not in source
-    assert not re.search(r'(amber|orange)', source, re.I)
+    assert not re.search(r'(amber|orange|violet|purple|periwinkle)', source, re.I)
+    assert not re.search(r'#8b8dff|#4a4dd1', source, re.I)
+    assert not re.search(r'#8b8dff|#4a4dd1', built, re.I)
 
 
 def test_security_headers_on_api_ui_and_login(workflow):

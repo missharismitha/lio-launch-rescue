@@ -6,7 +6,7 @@ import { Sheet } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AgentRail } from '@/components/AgentRail';
 import { ApprovalFlow } from '@/components/ApprovalFlow';
-import { ApproverBadge, Fact, Facts, Money, SheetSection } from '@/components/common';
+import { ApproverBadge, Fact, Facts, Money, RiskNote, SheetSection } from '@/components/common';
 import { OfferDetails } from '@/components/OfferCard';
 import { HoldNote, OptionList } from '@/components/Options';
 import { useLaunch } from '@/hooks/useLaunch';
@@ -20,7 +20,7 @@ import type { Detail, Overview } from '@/lib/types';
 function MailBox({ subject, body, testId }: { subject?: string; body?: string; testId: string }) {
   return (
     <div data-testid={testId} className="overflow-hidden rounded-control border border-line bg-white">
-      <p className="m-0 border-b border-line bg-page px-3 py-2 text-[13px]">
+      <p className="m-0 border-b border-line px-3 py-2 text-[14px]">
         <b>Subject: </b>
         {subject || ''}
       </p>
@@ -51,28 +51,28 @@ function BriefTab({ d }: { d: Detail }) {
         </Facts>
         {conf ? (
           <div>
-            <Badge tone={conf === 'low' ? 'warn' : conf === 'high' ? 'ok' : 'neutral'}>
+            <Badge tone={conf === 'high' ? 'ok' : 'neutral'}>
               <Dot />
               {cap(conf)} confidence
             </Badge>
           </div>
         ) : null}
-        {conf === 'low' ? <p className="m-0 text-warn">Low confidence: key facts are unconfirmed.</p> : null}
+        {conf === 'low' ? <RiskNote>Low confidence: key facts are unconfirmed.</RiskNote> : null}
         {(b.risks || []).length ? (
           <>
-            <h4 className="m-0 text-[13px] font-semibold text-ink-2">Risks</h4>
+            <h4 className="m-0 text-[14px] font-semibold text-ink-2">Risks</h4>
             <ul className="m-0 list-disc pl-5">{b.risks!.map((r, i) => <li key={i}>{r}</li>)}</ul>
           </>
         ) : null}
         {(b.verify_next || []).length ? (
           <>
-            <h4 className="m-0 text-[13px] font-semibold text-ink-2">{conf === 'low' ? 'What to confirm first' : "What I'd verify next"}</h4>
+            <h4 className="m-0 text-[14px] font-semibold text-ink-2">{conf === 'low' ? 'What to confirm first' : "What I'd verify next"}</h4>
             <ul className="m-0 list-disc pl-5" data-testid="verify-next">{b.verify_next!.map((r, i) => <li key={i}>{r}</li>)}</ul>
           </>
         ) : null}
-        {d.value?.claim_eur != null ? <p className="m-0 text-[13px] text-ink-2">A late-delivery claim of about {eur(d.value.claim_eur)} may apply. Legal decides.</p> : null}
+        {d.value?.claim_eur != null ? <p className="m-0 text-[14px] text-ink-2">A late-delivery claim of about {eur(d.value.claim_eur)} may apply. Legal decides.</p> : null}
         {d.value?.headline_eur != null ? (
-          <p className="m-0 text-[13px] text-ink-2">
+          <p className="m-0 text-[14px] text-ink-2">
             {d.value.basis === 'cost' || !d.value.basis
               ? `About ${eur(d.value.headline_eur)} of product cost short (cost basis, not price).`
               : `About ${eur(d.value.headline_eur)} at stake${d.value.label ? ` (${d.value.label})` : ''}.`}
@@ -123,19 +123,19 @@ function NumbersTab({ d, o }: { d: Detail; o: Overview }) {
       </Facts>
       {(d.conflicts || []).length ? (
         <>
-          <h4 className="m-0 text-[13px] font-semibold text-ink-2">Records that disagree</h4>
+          <h4 className="m-0 text-[14px] font-semibold text-ink-2">Records that disagree</h4>
           {d.conflicts!.map((x, i) => (
-            <div key={i} className="grid gap-0.5 rounded-control border border-line p-3">
+            <div key={i} className="grid gap-0.5 border-l-2 border-line pl-3">
               <b>{x.field || 'Record'}</b>
               <span>{x.why || ''}</span>
-              {x.confidence ? <span className="text-[13px] text-ink-2">{cap(x.confidence)} confidence</span> : null}
+              {x.confidence ? <span className="text-[14px] text-ink-2">{cap(x.confidence)} confidence</span> : null}
             </div>
           ))}
         </>
       ) : null}
       {w.available ? (
         <div className="grid gap-1">
-          <label htmlFor="whatif-text" className="text-[13px] font-semibold">Parts arrive in (hours, 0 to 72)</label>
+          <label htmlFor="whatif-text" className="text-[14px] font-semibold">Parts arrive in (hours, 0 to 72)</label>
           <input
             id="whatif-text"
             type="number"
@@ -145,7 +145,7 @@ function NumbersTab({ d, o }: { d: Detail; o: Overview }) {
             step={1}
             value={w.hours}
             onChange={(e) => e.target.value !== '' && w.setHours(Number(e.target.value))}
-            className="min-h-11 w-28 rounded-control border border-line-2 bg-card px-3"
+            className="min-h-11 w-28 rounded-control border border-line-2 bg-white px-3"
           />
           <p className="m-0 text-[14px]" aria-live="polite">{w.sentence}</p>
         </div>
@@ -187,7 +187,7 @@ function MessagesTab({ d, o }: { d: Detail; o: Overview }) {
       {extra.map((x, i) => (
         <SheetSection key={i} title={`To ${x.supplier || 'another supplier'}`}>
           <MailBox subject={x.subject} body={x.body} testId="draft-supplier-extra" />
-          <p className="m-0 text-[13px] text-ink-2">Draft only. Nothing is sent from here.</p>
+          <p className="m-0 text-[14px] text-ink-2">Draft only. Nothing is sent from here.</p>
         </SheetSection>
       ))}
       {esc ? (
@@ -209,7 +209,7 @@ function MessagesTab({ d, o }: { d: Detail; o: Overview }) {
           ) : (
             <>
               <div><Button size="sm" id="send-btn" disabled={!emailOn || launch.busy} onClick={() => void launch.sendMail()}>Send to supplier</Button></div>
-              {!emailOn ? <p className="m-0 text-[13px] text-ink-2">Sending is off. No sender is registered yet.</p> : null}
+              {!emailOn ? <p className="m-0 text-[14px] text-ink-2">Sending is off. No sender is registered yet.</p> : null}
             </>
           )}
         </div>
@@ -229,8 +229,8 @@ function ReviewForm({ d }: { d: Detail }) {
   const [note, setNote] = useState('');
   const arrivalDate = arrival ? new Date(arrival) : null;
   const valid = !!reply && qty !== '' && Number(qty) >= 0 && !!arrivalDate && !Number.isNaN(arrivalDate.getTime()) && cost !== '' && Number(cost) >= 0 && who.trim().length >= 2 && note.trim().length >= 5;
-  const field = 'min-h-11 rounded-control border border-line-2 bg-card px-3';
-  const L = ({ id, children }: { id: string; children: ReactNode }) => <label htmlFor={id} className="text-[13px] font-semibold">{children}</label>;
+  const field = 'min-h-11 rounded-control border border-line-2 bg-white px-3';
+  const L = ({ id, children }: { id: string; children: ReactNode }) => <label htmlFor={id} className="text-[14px] font-semibold">{children}</label>;
   return (
     <SheetSection title="Review the supplier reply" testId="review-form">
       <p className="m-0 text-ink-2">Type what the supplier wrote in their reply. This records an offer for review. Nothing is ordered.</p>
@@ -287,7 +287,7 @@ function HealthTab({ o }: { o: Overview }) {
                 ui.closeSheet();
                 launch.selectCase(i.id);
               }}
-              className="flex min-h-11 items-center justify-between gap-2 rounded-control border border-line px-3 text-left hover:bg-page aria-[current=true]:border-accent-ink aria-[current=true]:bg-accent-wash"
+              className="flex min-h-11 items-center justify-between gap-2 border-b border-line text-left aria-[current=true]:font-semibold"
             >
               <span>{(i.title || 'Case').split(':')[0]}</span>
               {(i.shortage ?? 0) > 0 ? <Badge tone="risk"><Dot />{num(i.shortage)} short</Badge> : <Badge>Check</Badge>}
@@ -351,7 +351,7 @@ export function DetailsSheet({ d, o, onStartDemo }: { d: Detail; o: Overview; on
           <TabsTrigger value="health">Health</TabsTrigger>
         </TabsList>
         <TabsContent value="brief"><BriefTab d={d} /></TabsContent>
-        <TabsContent value="agent"><SheetSection title="Agents"><AgentRail d={d} o={o} /></SheetSection></TabsContent>
+        <TabsContent value="agent"><SheetSection title="What the agent did"><AgentRail d={d} o={o} legend /></SheetSection></TabsContent>
         <TabsContent value="numbers"><NumbersTab d={d} o={o} /></TabsContent>
         <TabsContent value="messages"><MessagesTab d={d} o={o} /></TabsContent>
         <TabsContent value="offer"><OfferTab d={d} /></TabsContent>

@@ -157,8 +157,8 @@ export function DemoOverlay({ d, o }: { d: Detail; o: Overview }) {
       {rect ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed z-[70] rounded-card transition-[top,left,width,height] duration-200"
-          style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: '0 0 0 9999px rgba(10,10,10,.55)' }}
+          className="pointer-events-none fixed z-[70] rounded-[14px] transition-[top,left,width,height] duration-200"
+          style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: '0 0 0 9999px rgba(15,17,21,.55)' }}
         />
       ) : null}
       <div
@@ -166,16 +166,16 @@ export function DemoOverlay({ d, o }: { d: Detail; o: Overview }) {
         aria-label="Guided demo"
         data-testid="demo-card"
         style={{ pointerEvents: 'auto' }}
-        className="fixed inset-x-3 bottom-3 z-[71] mx-auto grid max-w-md gap-3 rounded-card border border-line bg-card p-4 shadow-sheet sm:right-6 sm:left-auto sm:mx-0"
+        className="fixed inset-x-3 bottom-3 z-[71] mx-auto grid max-w-md gap-3 rounded-[14px] border border-line-2 bg-white p-4 sm:right-6 sm:left-auto sm:mx-0"
       >
-        <div className="flex items-center justify-between text-[13px] text-ink-2">
+        <div className="flex items-center justify-between text-[14px] text-ink-2">
           <span>
             Step {i + 1} of {steps.length}
           </span>
           <span className="num" data-testid="demo-clock">{Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}</span>
         </div>
         <div className="h-1 overflow-hidden rounded-full bg-line" role="progressbar" aria-valuemin={0} aria-valuemax={TOTAL} aria-valuenow={TOTAL - left} aria-label="Tour time used">
-          <div className="h-full bg-accent-ink" style={{ width: `${((TOTAL - left) / TOTAL) * 100}%` }} />
+          <div className="h-full bg-ink" style={{ width: `${((TOTAL - left) / TOTAL) * 100}%` }} />
         </div>
         <p className="m-0" aria-live="polite">
           {done ? 'Time. That was the 2-minute tour.' : step.missing ? `Not in this data yet: ${step.missing}.` : step.text}

@@ -1,28 +1,7 @@
-import { Bot, FileText, ShieldCheck, UserCheck, X } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { AnimatedList, type ListItem } from '@/components/ui/animated-list';
 import { useLaunch } from '@/hooks/useLaunch';
-import { agentGroups, approvalsNeeded, hasToolRows } from '@/lib/derive';
+import { agentGroups, hasToolRows } from '@/lib/derive';
 import type { Detail, Overview, TraceRow } from '@/lib/types';
-
-const AUTONOMY: Record<string, { label: string; tone: 'ok' | 'neutral' | 'accent' | 'warn'; icon: typeof Bot }> = {
-  auto: { label: 'auto', tone: 'ok', icon: ShieldCheck },
-  draft: { label: 'draft', tone: 'neutral', icon: FileText },
-  approval: { label: 'approval', tone: 'accent', icon: UserCheck },
-  never: { label: 'never', tone: 'warn', icon: X },
-};
-
-function AutonomyBadge({ a }: { a?: string }) {
-  const m = a ? AUTONOMY[a] : undefined;
-  if (!m) return null;
-  const Icon = m.icon;
-  return (
-    <Badge tone={m.tone}>
-      <Icon className="size-3.5" aria-hidden="true" />
-      {m.label}
-    </Badge>
-  );
-}
 
 const toolLabel = (t: string) => t.replace(/_/g, ' ');
 
@@ -36,89 +15,128 @@ export function runModeLine(d: Detail): string | null {
   return null;
 }
 
-function toolItems(rows: TraceRow[]): ListItem[] {
+/* "Priced an option" x2 -> "Priced 2 options"; "Checked the policy" x2 -> "Checked the policy twice" */
+export function groupLabel(label: string, n: number): string {
+  if (n === 1) return label;
+  const m = /^(\w+) an? (.+)$/.exec(label);
+  if (m) return `${m[1]} ${n} ${m[2]}s`;
+  return `${label} ${n === 2 ? 'twice' : `${n} times`}`;
+}
+
+interface Row {
+  label: string;
+  n: number;
+  summaries: string[];
+  rule: boolean;
+  approval: boolean;
+  rejected: boolean;
+}
+
+export function timelineRows(rows: TraceRow[]): Row[] {
+  const out: Row[] = [];
+  for (const r of rows) {
+    const label = toolLabel(r.tool || r.agent || String(r.step ?? 'step'));
+    const rule = r.by === 'rule';
+    const approval = r.autonomy === 'approval';
+    const rejected = /reject/i.test(r.outcome || '');
+    const text = r.summary || r.action || r.outcome || '';
+    const last = out[out.length - 1];
+    if (last && last.label === label && last.rule === rule && last.approval === approval && last.rejected === rejected) {
+      last.n += 1;
+      if (text && !last.summaries.includes(text)) last.summaries.push(text);
+    } else out.push({ label, n: 1, summaries: text ? [text] : [], rule, approval, rejected });
+  }
+  return out;
+}
+
+const AUTONOMY_LEGEND: [string, string][] = [
+  ['auto', 'ran by itself (read and compute)'],
+  ['draft', 'prepared a draft for you to read'],
+  ['approval', 'waits for a named person to approve'],
+  ['never', 'the app does not do this (send, order, pay)'],
+];
+
+export function AgentLegend() {
+  return (
+    <ul className="m-0 grid list-none gap-1 p-0 text-[14px] leading-5 text-ink-2" data-testid="autonomy-legend">
+      {AUTONOMY_LEGEND.map(([k, v]) => (
+        <li key={k}>
+          <b className="font-semibold text-ink">{k}</b> {v}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function items(rows: Row[]): ListItem[] {
   return rows.map((r, i) => ({
-    key: `${i}-${r.tool || r.agent || ''}`,
+    key: `${i}-${r.label}`,
     testId: 'agent-step',
-    className: 'grid gap-1 py-2.5',
+    className: 'relative pb-5 pl-6 last:pb-0',
     node: (
       <>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-md bg-warn-wash px-2 py-0.5 text-[13px] font-semibold" data-testid="tool-chip">
-            {toolLabel(r.tool || r.agent || String(r.step ?? 'step'))}
-          </span>
-          <AutonomyBadge a={r.autonomy} />
-          {r.by ? <span className="text-[12px] text-ink-2">by {r.by}</span> : null}
-        </div>
-        {r.summary || r.action || r.outcome ? <p className="m-0 text-[14px] text-ink-2">{r.summary || r.action || r.outcome}</p> : null}
-      </>
-    ),
-  }));
-}
-
-function groupItems(d: Detail): ListItem[] {
-  return agentGroups(d).map((g) => ({
-    key: g.agent,
-    testId: 'agent-step',
-    className: 'grid gap-1 py-2.5',
-    node: (
-      <>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-semibold">{g.agent}</span>
-          <AutonomyBadge a={g.main.autonomy} />
-        </div>
-        <p className="m-0 text-[14px] text-ink-2">
-          {g.main.action || ''}
-          {g.main.outcome === 'needs human review' ? '. Waiting for you.' : ''}
+        <i
+          aria-hidden="true"
+          className={
+            'absolute top-[7px] -left-[4px] size-[7px] rounded-full ' +
+            (r.rejected ? 'bg-risk' : r.rule ? 'border border-ink-3 bg-white' : 'bg-ink')
+          }
+        />
+        <p className="m-0 text-[15px] leading-6 text-ink">
+          {groupLabel(r.label, r.n)}
+          {r.rule ? <span className="ml-2 text-[14px] text-ink-2">rule-based</span> : null}
+          {r.approval ? <span className="ml-2 text-[14px] text-ink-2">needs your approval</span> : null}
         </p>
+        {r.summaries.length ? <p className="m-0 truncate text-[14px] leading-5 text-ink-2">{r.summaries.join('; ')}</p> : null}
       </>
     ),
   }));
 }
 
-export function AgentRail({ d, o }: { d: Detail; o: Overview }) {
+export function AgentRail({ d, o, legend = false }: { d: Detail; o: Overview; legend?: boolean }) {
   const { busy } = useLaunch();
   const agent = o.agent || {};
-  const rows = d.trace || [];
-  const items = hasToolRows(d) ? toolItems(rows) : groupItems(d);
+  const rows = hasToolRows(d)
+    ? timelineRows(d.trace || [])
+    : agentGroups(d).map((g) => ({
+        label: g.agent,
+        n: 1,
+        summaries: g.main.action ? [g.main.action + (g.main.outcome === 'needs human review' ? '. Waiting for you.' : '')] : [],
+        rule: false,
+        approval: g.main.autonomy === 'approval',
+        rejected: false,
+      }));
   const mode = runModeLine(d);
   const live = agent.running || busy;
-  const need = approvalsNeeded(d);
-  const groups = agentGroups(d).length;
   return (
-    <div data-demo="agent" data-testid="agent-rail" className="grid gap-2">
+    <div data-demo="agent" data-testid="agent-rail" className="grid gap-4">
       {live ? (
-        <p className="m-0 flex items-center gap-2 text-[14px] text-accent-ink" role="status">
-          <Bot className="size-4" aria-hidden="true" />
+        <p className="m-0 text-[14px] text-ink-2" role="status">
           Working: {String(agent.steps?.slice(-1)[0]?.message || 'Starting')}
         </p>
       ) : null}
       {mode ? (
-        <p className="m-0 text-[14px] font-semibold" data-testid="run-mode">
+        <p className="m-0 text-[14px] leading-5 text-ink-2" data-testid="run-mode">
           {mode}
         </p>
       ) : null}
-      {items.length ? (
-        <AnimatedList items={items} className="m-0 grid list-none divide-y divide-line p-0" />
+      {rows.length ? (
+        <AnimatedList items={items(rows)} className="m-0 ml-[3px] list-none border-l border-line p-0 pt-1" />
       ) : (
         <p className="m-0 text-ink-2">The agent has not run yet.</p>
       )}
       {(d.approvals || []).length ? (
-        <ul className="m-0 grid list-none gap-1 p-0 text-[14px]">
+        <ul className="m-0 grid list-none gap-1 p-0 text-[14px] text-ink-2">
           {(d.approvals || []).map((a, i) => (
-            <li key={i} className="flex flex-wrap items-center gap-2">
-              <UserCheck className="size-4 text-accent-ink" aria-hidden="true" />
+            <li key={i}>
               {a.what || 'Approval'}
               {a.to_role ? ` to ${a.to_role}` : ''}
               {a.status ? `: ${a.status}` : ''}
             </li>
           ))}
         </ul>
-      ) : groups ? (
-        <p className="m-0 text-[13px] text-ink-2" data-testid="agent-summary">
-          {groups} agents checked. {need ? `${need} ${need === 1 ? 'needs' : 'need'} your approval.` : 'Everything is approved.'}
-        </p>
       ) : null}
+      {legend ? <AgentLegend /> : null}
     </div>
   );
 }

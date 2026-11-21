@@ -39,3 +39,9 @@ export function etaText(v?: string | null): string {
 export const deadlineTime = (deadline?: string | null): string => /(\d{1,2}:\d{2})/.exec(deadline || '')?.[1] || '';
 
 export const whatIfLabel = (hours: number): string => (hours === 0 ? 'now' : `in ${hours} h`);
+
+/* "Sunday 22 November" */
+export const dayLong = (s?: string | null): string => {
+  const d = isoDay(s);
+  return d ? berlin({ weekday: 'long', day: 'numeric', month: 'long' }, d) : '';
+};

@@ -1,6 +1,6 @@
 import { Badge, Unknown } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { ApproverBadge, Fact, Facts, Money } from '@/components/common';
+import { ApproverBadge, Fact, Facts, Label, Money, RiskNote } from '@/components/common';
 import { hrs, num } from '@/lib/format';
 import type { Offer } from '@/lib/types';
 
@@ -11,14 +11,14 @@ export function OfferFacts({ of }: { of: Offer }) {
   return (
     <>
       {of.arrives_before_deadline === false ? (
-        <p className="m-0 font-semibold text-risk">Arrives after the last packing hour</p>
+        <RiskNote>Arrives after the last packing hour</RiskNote>
       ) : of.gap_after_offer != null ? (
-        <p className="m-0">Gap after offer: {num(of.gap_after_offer)}</p>
+        <p className="m-0 text-ink-2">Gap after offer: {num(of.gap_after_offer)}</p>
       ) : null}
       <Facts>
         <Fact label="Cost">
           {of.cost_eur != null ? <Money v={of.cost_eur} /> : <Unknown />}
-          <small className="block text-[13px] font-normal text-ink-2">from the supplier reply, not confirmed</small>
+          <small className="block text-[14px] text-ink-3">from the supplier reply, not confirmed</small>
         </Fact>
         <Fact label="Approver">
           <ApproverBadge a={of.approver} />
@@ -30,18 +30,18 @@ export function OfferFacts({ of }: { of: Offer }) {
 
 export function OfferCard({ of }: { of: Offer }) {
   return (
-    <Card data-testid="decision-card" data-demo="offer" aria-label="Your decision" className="hairline grid gap-3 p-5 sm:p-6">
-      <h2 className="m-0 text-[22px] leading-7 font-semibold">{offerTitle(of)}</h2>
+    <Card data-testid="decision-card" data-demo="offer" aria-label="Your decision" className="grid gap-4 border-t border-line pt-8">
+      <h2 className="m-0 text-[24px] leading-[30px] font-semibold tracking-[-0.01em] text-balance sm:text-[30px] sm:leading-[38px]">{offerTitle(of)}</h2>
       <OfferFacts of={of} />
       {of.simulated ? (
         <div>
-          <Badge tone="neutral" data-testid="simulated-chip">
+          <Badge tone="tag" data-testid="simulated-chip">
             Simulated reply
           </Badge>
         </div>
       ) : null}
-      <p className="m-0 text-[13px] text-ink-2">Nothing is ordered. Stock and orders are unchanged.</p>
-      <p className="m-0 text-[13px] text-ink-2">{of.approver?.role || 'The approver'} decides on the spend.</p>
+      <Label>Nothing is ordered. Stock and orders are unchanged.</Label>
+      <Label>{of.approver?.role || 'The approver'} decides on the spend.</Label>
     </Card>
   );
 }
@@ -49,7 +49,7 @@ export function OfferCard({ of }: { of: Offer }) {
 export function OfferDetails({ of }: { of: Offer }) {
   return (
     <div className="grid gap-3" data-testid="offer-details">
-      <p className="m-0 text-[17px] font-semibold">
+      <p className="m-0 text-[17px] leading-6 font-semibold">
         {num(of.quantity)} units arrive {of.arrival_label || 'at a time to be confirmed'}.
       </p>
       <OfferFacts of={of} />
@@ -61,11 +61,11 @@ export function OfferDetails({ of }: { of: Offer }) {
       ) : null}
       {of.simulated ? (
         <div>
-          <Badge>Simulated reply</Badge>
+          <Badge tone="tag">Simulated reply</Badge>
         </div>
       ) : null}
-      {of.reviewed_by ? <p className="m-0 text-[13px] text-ink-2">Reviewed by {of.reviewed_by}.</p> : null}
-      <p className="m-0 text-[13px] text-ink-2">Nothing is ordered. Stock and orders are unchanged.</p>
+      {of.reviewed_by ? <Label>Reviewed by {of.reviewed_by}.</Label> : null}
+      <Label>Nothing is ordered. Stock and orders are unchanged.</Label>
     </div>
   );
 }

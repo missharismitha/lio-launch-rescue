@@ -150,3 +150,8 @@ Implementation complete for Milestone 1. All source is on codex/launch-rescue-mv
 - Tests: vitest 29 (derive, DecisionCard, OfferCard, states) via `cd frontend && npx vitest run`; `npx tsc --noEmit` clean; `python -m pytest -q` -> 349 passed, 1 skipped (new tests/test_static_build.py 5; edited test_access_gate, test_hardening, test_privacy_api).
 - `npm audit` (run once, after install): found 0 vulnerabilities.
 - Browser audit (Browser pane, live :8000, real case data; Run agent, Sync, approve and send POSTs were intercepted so nothing real was changed or spent): see the build report. Not verified: login.css visually (gate off on this server), reduced-motion emulation (code only: MotionConfig reducedMotion=user plus a CSS media query), real print preview.
+
+## UI restyle: quiet editorial (21 Nov 2026, night)
+- Purple and black band removed. New tokens in frontend/src/index.css: white page, ink #0F1115 (solid ink primary button), ink-2 #565B69, ink-3 #6B7080 (AA on white), hairline #E6E7EB, risk #B42318 and ok #17694A only as small text/markers/the short strip. No cards, no gradients, one soft shadow (Details sheet). Hero numeral 72/52, thin hours track, packing tracks 6 px, agent section "What the agent did" is a vertical timeline with grouped repeated rows and the autonomy legend in Details > Agent. login.css and icon.svg restyled; privacy test now forbids violet/purple/periwinkle and #8B8DFF/#4A4DD1.
+- Build fix: `.npmrc` ignore-scripts disabled the npm `prebuild` hook, so `build` is now `node ../scripts/clean-assets.mjs && vite build` (app/static/assets holds only the referenced files).
+- pytest 349 passed, 1 skipped; vitest 29; JS 453 kB raw / 146.6 kB gzip, CSS 6.1 kB gzip.

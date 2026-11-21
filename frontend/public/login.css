@@ -1,16 +1,14 @@
-/* Pre-auth page. Same tokens as the app; no external assets. */
-:root { --band:#0A0A0A; --fg:#F3F4F6; --accent:#8B8DFF; --card:#fff; --ink:#111318; --line:#E3E5EA; --risk:#C2352B; }
+/* Pre-auth page. Same quiet editorial tokens as the app; no external assets. */
+:root { --ink:#0F1115; --ink-2:#565B69; --line:#E6E7EB; --line-2:#8A8F9E; --risk:#B42318; }
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: var(--band); color: var(--fg);
-  font: 15px/22px "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"SF Pro Text",Roboto,sans-serif; }
-.login { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
-.login form { width: min(360px, 100%); background: var(--card); color: var(--ink); border: 1px solid var(--line);
-  border-radius: 14px; padding: 24px; display: grid; gap: 12px; box-shadow: 0 24px 64px -12px rgba(0,0,0,.5); }
-.login h1 { font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 16px; text-align: center; width: min(360px, 100%); }
-.login { grid-template-rows: auto; align-content: center; gap: 0; justify-items: center; }
-.login label { font-size: 13px; font-weight: 600; }
-.login input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid #b7bbc6; border-radius: 10px; font: inherit; color: var(--ink); background: #fff; }
-.login input:focus-visible, .login .btn:focus-visible { outline: 2px solid #4A4DD1; outline-offset: 2px; }
-.login .btn { min-height: 44px; border: 0; border-radius: 10px; background: var(--accent); color: #0A0A0A; font: inherit; font-weight: 600; cursor: pointer; touch-action: manipulation; }
-.login .btn:hover { filter: brightness(1.05); }
-#login-error, .login-error { margin: 0; min-height: 22px; color: var(--risk); font-size: 13px; }
+html, body { margin: 0; min-height: 100%; background: #fff; color: var(--ink);
+  font: 16px/24px "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"SF Pro Text",Roboto,sans-serif; }
+.login { min-height: 100vh; display: grid; align-content: center; justify-items: center; padding: 16px; }
+.login h1 { font-size: 22px; line-height: 30px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 24px; text-align: left; width: min(360px, 100%); }
+.login form { width: min(360px, 100%); display: grid; gap: 12px; }
+.login label { font-size: 14px; color: var(--ink-2); }
+.login input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-2); border-radius: 10px; font: inherit; color: var(--ink); background: #fff; }
+.login input:focus-visible, .login .btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.login .btn { min-height: 44px; border: 0; border-radius: 10px; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer; touch-action: manipulation; }
+.login .btn:hover { background: #2A2D35; }
+#login-error, .login-error { margin: 0; min-height: 22px; color: var(--risk); font-size: 14px; }
