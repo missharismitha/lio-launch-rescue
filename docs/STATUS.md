@@ -199,3 +199,8 @@ Implementation complete for Milestone 1. All source is on codex/launch-rescue-mv
 - Deck: docs/deck/deck.html (6 slides, 1280x720) exported to docs/deck/Launch-Control-deck.pdf with headless Chrome (command in docs/deck/README.md). Slide 2 has NO office-hours quote: add it verbatim to the commented block only after the interview, then re-export. DECK.md demo script and do-not-say list updated for the transport result and the manual send route.
 - Video: docs/VIDEO.md has the 3-minute shot list, recording method and pre-flight checks. The video itself is not recorded (needs a person at the screen).
 - Still needs the user: register liohackathon@gmail.com as a sender in the Lio portal Settings; the office-hours interview quote; recording the video; deployment (optional); the hand-in upload before Sunday 12:00.
+
+## Hardening and morning handoff (22 Nov 2026, ~01:15)
+- app/mailbox.py: a rejected IMAP login (imaplib.IMAP4.error at login) is remembered by a hash of host, user and password; further checks are skipped with a plain "paused" message until the credentials change. Network errors are still retried. tests/test_login_guard.py (3). Reason: the .env password is not a valid app password and a 60 s retry loop can lock a Google account.
+- README refreshed (transport comparison, manual send, login guard, test counts). docs/MORNING.md is the ordered checklist for the hand-in.
+- pytest: 382 passed, 1 skipped; vitest 41; tsc clean.

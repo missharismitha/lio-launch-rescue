@@ -40,6 +40,7 @@ class Inbox:
         self.store, self.directory = store, directory
         self.lock = threading.RLock()
         self.status = {'last_checked': None, 'last_success': None, 'error': None}
+        self.rejected_login = None  # fingerprint of credentials the server refused: no retries until they change
         with store.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS messages (digest TEXT PRIMARY KEY, message_id TEXT, issue_id TEXT, payload TEXT NOT NULL)')
 
@@ -92,9 +93,18 @@ class Inbox:
         if not all(os.getenv(k) for k in ('IMAP_HOST', 'IMAP_USERNAME', 'IMAP_PASSWORD')):
             self.status['error'] = 'IMAP is not configured. Import an exported .eml reply locally instead.'
             return self.status.copy()
+        login = hashlib.sha256('|'.join(os.environ[k] for k in ('IMAP_HOST', 'IMAP_USERNAME', 'IMAP_PASSWORD')).encode()).hexdigest()
+        if self.rejected_login == login:
+            self.status['error'] = ('The mail server rejected this login. Retrying is paused so the account is not locked. '
+                                    'Fix IMAP_USERNAME and IMAP_PASSWORD (an app password is needed) and restart.')
+            return self.status.copy()
         try:
             with imaplib.IMAP4_SSL(os.environ['IMAP_HOST'], int(os.getenv('IMAP_PORT', '993')), ssl_context=ssl.create_default_context()) as client:
-                client.login(os.environ['IMAP_USERNAME'], os.environ['IMAP_PASSWORD'])
+                try:
+                    client.login(os.environ['IMAP_USERNAME'], os.environ['IMAP_PASSWORD'])
+                except imaplib.IMAP4.error:
+                    self.rejected_login = login
+                    raise
                 status, _ = client.select(os.getenv('IMAP_FOLDER', 'INBOX'), readonly=True)
                 if status != 'OK':
                     raise ValueError('Inbox selection failed')

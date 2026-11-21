@@ -11,6 +11,7 @@ Soony launches GH6. The trucks leave Hamburg on Sunday at 20:00. Soony's own pla
 - Reads Soony's messy files (PDF, DOCX, XLSX, CSV; the newest file wins), works out the real shortfall and lists where the records conflict.
 - Finds Plan B options nobody asked about. For example, a second supplier has 36,000 cards packed and on hold at its dock until delivery terms are confirmed. That is 5.3 times the gap. Their arrival time is unknown, and the app says so.
 - Prices each option where it can (or shows "unknown"), routes the decision to the approver named in Soony's approval policy, and drafts the supplier message and the internal escalation.
+- Compares air, sea and road for each supplier against the Sunday 20:00 deadline, with a fastest mode, a cheapest mode that still makes it, and low, base and high freight estimates. On the current data no mode reaches Hamburg in time for the game cards. The freight prices are market-rate estimates with stated sources (docs/FREIGHT.md), never customer data.
 - A what-if slider shows how many copies still ship if the parts arrive in N hours. This is a scenario, not a confirmed delivery.
 - An agent (OpenAI Responses API, model set by env) picks its own tools across several turns, within fixed limits. Code checks every tool call. Without a model, a fixed rule-based order runs and is labelled `rule_based`.
 
@@ -20,8 +21,10 @@ Soony launches GH6. The trucks leave Hamburg on Sunday at 20:00. Soony's own pla
 - A named person approves each draft in two steps (read it, then type a name). The internal escalation needs its own separate approval. Approval is tied to the evidence: if the source files change, the approval is cancelled.
 - Approval in this app covers the displayed draft only. It does not replace Soony's authorised approver, a PO or a quality concession.
 - Email sending is off by default. An optional guarded SMTP send exists only for an approved inquiry whose evidence has not changed. It needs `LIO_EMAIL_ENABLED=true` and a verified recipient. If SMTP fails or the result is unclear, the app does not retry automatically. SMTP acceptance does not mean the supplier confirmed anything.
+- Sending by hand: with SMTP off, an approved inquiry can be handed off for a person to send from their own mailbox (copy address, subject and message, then "I sent it"). The app records "sent by hand, delivery not confirmed". A supplier reply is imported as an `.eml` file and still goes through human review before any number changes.
+- If the mail server rejects the mailbox login, the inbox checker pauses instead of retrying every minute, so a wrong password cannot lock the account.
 
-Verified on 21 Nov 2026: `python -m pytest -q` gave 349 passed, 1 skipped. A live gpt-5.5 agent run finished in run mode `agent` with 12 tool calls, 0 rejected, in about 31 s. It stopped at `awaiting_human_review` and sent no email.
+Verified on 22 Nov 2026: `python -m pytest -q` gave 382 passed, 1 skipped, and the frontend has 41 vitest tests. Verified on 21 Nov 2026: a live gpt-5.5 agent run finished in run mode `agent` with 12 tool calls, 0 rejected, in about 31 s. It stopped at `awaiting_human_review` and sent no email.
 
 ## Run
 
@@ -104,7 +107,7 @@ Agent limits (each can be changed via env): 8 turns, 20 tool calls, 45 s, and pe
 ## Data-driven vs assumption
 
 - **From the files:** quantities, stock, packing counts (from the newest status file), edition priority (from the CPO memo), approver tiers (from the approval policy), supplier holds and conflicts. No challenge results are stored as constants in the code.
-- **Assumptions:** freight rates and exchange rates are editable assumptions in `.local/assumptions.json`. They are empty by default, so options say "price unknown". The data has no selling price, so the app does not claim lost revenue. The figure it shows is product cost at stake.
+- **Assumptions:** freight rates and exchange rates are editable assumptions in `.local/assumptions.json`. An unset rate shows as "price unknown". Freight estimates (`use_freight_estimates`) and the USD to EUR rate are explicit, labelled estimates drawn from published market figures; see docs/FREIGHT.md. The data has no selling price, so the app does not claim lost revenue. The figure it shows is product cost at stake.
 - **Simulated:** `scripts/simulate_supplier_reply.py` creates a rehearsal supplier reply. The reply goes through the real import path and is clearly labelled as simulated. Its numbers are scenario inputs, not facts.
 
 ## When the system is wrong
