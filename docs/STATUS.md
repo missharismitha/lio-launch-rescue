@@ -193,3 +193,9 @@ Implementation complete for Milestone 1. All source is on codex/launch-rescue-mv
 - Frontend: components/ManualSend.tsx (copy address/subject/message, "I sent it" with a name, reply file import with 2 MB check and inline error), DecisionCard and DetailsSheet wording "Sent by hand, delivery not confirmed", api.ts apiRaw.
 - Tests: tests/test_manual_handoff.py (11), pytest 379 passed 1 skipped; vitest 41; tsc clean.
 - Operations note: .env currently holds SMTP/IMAP lines whose password is NOT a valid app password (14 characters including a symbol, not 16 letters). With IMAP_* set the inbox poller logs in to Gmail every 60 s and fails, which can trigger Google lockout. Run with IMAP_*/SMTP_* blanked in the process environment, or remove those lines, until a real app password exists. LIO_EMAIL_ENABLED stays false. No email has been sent by this app.
+
+## Hand-in assets (22 Nov 2026, ~00:45)
+- Pricing: .local/assumptions.json (ignored by git) now has fx_to_eur.USD = 0.91 (ECB reference rate 1 EUR = 1.0989 USD, 17 Nov 2026) and use_freight_estimates = true. The live run's Boise release option stays at EUR 1,026 (freight estimate for the 36,000 held cards by air): goods are already on order, so they are not new spend.
+- Deck: docs/deck/deck.html (6 slides, 1280x720) exported to docs/deck/Launch-Control-deck.pdf with headless Chrome (command in docs/deck/README.md). Slide 2 has NO office-hours quote: add it verbatim to the commented block only after the interview, then re-export. DECK.md demo script and do-not-say list updated for the transport result and the manual send route.
+- Video: docs/VIDEO.md has the 3-minute shot list, recording method and pre-flight checks. The video itself is not recorded (needs a person at the screen).
+- Still needs the user: register liohackathon@gmail.com as a sender in the Lio portal Settings; the office-hours interview quote; recording the video; deployment (optional); the hand-in upload before Sunday 12:00.

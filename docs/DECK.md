@@ -70,7 +70,8 @@ Visual language (current UI, see the restyle note in docs/STATUS.md): white page
 3. (25 to 45 s) Agent timeline. "This run is the model choosing its own tools: 12 tool calls, none rejected, about 31 seconds, and it stopped at human review." (V, live gpt-5.5 run.) Point at the Boise hold: "36,000 cards are packed and on hold at Boise's dock because our PO says DDP and their agreement says EXW. That is 5.3 times the gap. The arrival date is unknown, so the agent says unknown." (V)
    - **Timing rule:** a run takes about 31 s. Start the run before the pitch, or press Run at the start of the demo and talk over steps 1 and 2. Don't wait silently. If the result shown is from an earlier run, say "this is the run from a few minutes ago".
    - If the model is unavailable, the run shows "rule-based". Say "this is the rule-based fallback" out loud.
-4. (45 to 65 s) Open Details: the supplier message and the internal escalation are drafts with two-step named approval. "Terms change goes to the Head of Procurement, freight to the Category Lead, as the policy says. Nothing is sent." (V)
+3b. (inside step 3, 10 s) Scroll to "Transport options". "We compared air, sea and road for each supplier against Sunday 20:00. For the game cards no mode makes it: air is about 3.7 days late. So the lever is the hold at Boise, not a faster flight." (V on the engine's output; the arrival time rests on stated handling assumptions of 1 day to the airport, 1 day customs, 2 days flight, 1 day truck. Freight prices are market-rate **estimates**: say "estimate" every time. Road from the Polish art-book supplier does fit, with about 7 hours to spare, but that is transit time only and supplier stock is unconfirmed.)
+4. (45 to 65 s) Open Details: the supplier message and the internal escalation are drafts with two-step named approval. "Terms change goes to the Head of Procurement, freight to the Category Lead, as the policy says. Nothing is sent by the app: a person sends it from their own mailbox, and the reply comes back as a file for review." (V: manual send route, no SMTP.)
 5. (65 to 80 s, optional, only if rehearsed) Offer card with the "Simulated reply" chip. "This is a rehearsal reply going through the real import path. The real inquiry to Hwaseong went out on Saturday and has no reply yet." (Simulated: say it.)
 6. (80 to 90 s) Print the one-page brief. "The CPO asked for one page, not forty dashboards."
 
@@ -126,7 +127,9 @@ Visual language (current UI, see the restyle note in docs/STATUS.md): white page
 - That the app sends email, places orders or books freight. It drafts; humans send.
 - That it was tested on a second customer or dataset.
 - "Explains the diff since the last run" (the since-last-run strip isn't built).
-- Live IMAP/SMTP or Gmail integration as a verified feature of the app.
+- Live IMAP/SMTP or Gmail integration as a verified feature of the app. Email is sent by a person from their own mailbox (hand-off route); replies are imported as .eml files.
+- A freight price as fact. Every freight figure is a market-rate estimate with a stated source (docs/FREIGHT.md); the data contains no freight prices.
+- That any transport mode saves the game-card shortfall. The engine says none reaches Hamburg by Sunday 20:00 under its stated assumptions.
 - That it is deployed or public, unless the tunnel was tested on the day.
 - The number of competing teams, or anything about Lio's internal tools or approval model.
 - That the agent is "always" right or fully autonomous. The verified claim is one live run: 12 calls, 0 rejected, about 31 s, stopped at human review.
