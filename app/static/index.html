@@ -1,38 +1,42 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Launch Rescue · Soony</title>
-  <link rel="stylesheet" href="/static/styles.css">
-  <script src="/static/app.js" defer></script>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6550c7"><title>Launch Rescue — Agent workspace</title>
+  <link rel="stylesheet" href="/static/styles.css"><script src="/static/app.js" defer></script>
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="Launch Rescue home"><span class="brand-mark">L<span>R</span></span><span>Launch Rescue<small>SOONY OPERATIONS</small></span></a>
-    <span class="workspace">Hamburg distribution center <span class="workspace-tag">GH6 LAUNCH</span></span>
-    <span class="local-label">Private workspace</span>
-  </header>
-  <main>
-    <section class="page-heading">
-      <div><p class="eyebrow">KEEP THE LINE RUNNING</p><h1>See the risk.<br><span>Make the next move.</span></h1><p class="intro">Evidence-backed decisions for the last stretch of launch.</p></div>
-      <div class="launch-card"><span class="eyebrow">LAUNCH DATE · FROM SOURCE</span><strong id="launch-date">Not available</strong><p>Hamburg · Europe/Berlin</p><span class="deadline-note">Confirm the departure time in the launch plan. Allow time to pack.</span></div>
-    </section>
-    <div class="connection-bar"><div><span class="status-dot"></span><strong id="source-mode">Connecting to local service</strong><span id="checked-at">Waiting for first check</span></div><div class="refresh-actions"><button class="button button-quiet" id="sync-button">Check portal</button><button class="button button-dark" id="refresh-button">Rescan local files</button></div></div>
-    <section class="agent-console"><div><h2>Launch Rescue Agent</h2><p id="agent-state">Ready to investigate the selected risk.</p></div><button class="button button-primary" id="run-agent">Run agent</button><ol id="agent-steps"></ol></section>
-    <div id="global-error" class="notice error" role="alert" hidden></div>
-    <div id="warnings" class="warnings"></div>
-    <section class="summary-grid" aria-label="Launch status">
-      <article class="metric"><span>Open risks</span><strong id="risk-count">—</strong><small>Prioritized by component impact</small></article>
-      <article class="metric"><span>Standard still to pack</span><strong id="standard-remaining">—</strong><small id="standard-rate">Loading source data</small></article>
-      <article class="metric"><span>Collector’s still to pack</span><strong id="collectors-remaining">—</strong><small id="collectors-rate">Loading source data</small></article>
-      <article class="metric integrations"><span>Connections</span><div id="integrations"></div><small id="snapshot-at">Snapshot not loaded</small></article>
-    </section>
-    <section class="workbench">
-      <aside class="risk-sidebar"><div class="section-heading"><h2>Needs attention</h2><span id="issue-total" class="count">—</span></div><p class="muted sidebar-intro">One component can stop a complete edition.</p><div id="issue-list" class="issue-list"><p class="loading">Reading the operational picture…</p></div><p class="sidebar-footnote">Risks can overlap. Shortages are not additive across editions.</p></aside>
-      <section id="issue-detail" class="issue-detail" aria-live="polite"><div class="empty-state"><span class="empty-icon">◎</span><h2>Your next decision starts here</h2><p>Once data is loaded, choose a risk to review its evidence and next action.</p></div></section>
-    </section>
-    <footer><span>Launch Rescue · Read. Reconcile. Recover.</span><span id="poll-note">Local case history persists between sessions.</span></footer>
-  </main>
-</body>
-</html>
+<a class="skip-link" href="#composer">Skip to agent</a>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="/" aria-label="Launch Rescue home"><span class="brand-symbol" aria-hidden="true">lr<span></span></span><span>Launch Rescue<small>Your launch operations agent</small></span></a>
+    <button class="workspace-switch" id="workspace-button"><span class="workspace-icon" aria-hidden="true">S</span><span>Soony Interactive<small>Grand Heist 6 launch</small></span><span class="chevron" aria-hidden="true">⌄</span></button>
+    <button class="search-trigger" id="search-trigger"><span data-icon="search"></span><span>Search cases</span><kbd>Ctrl K</kbd></button>
+    <nav class="main-nav" aria-label="Workspace"><button class="nav-item active" id="nav-agent"><span data-icon="spark"></span>Agent workspace<span class="nav-dot"></span></button><button class="nav-item" id="nav-evidence"><span data-icon="files"></span>Evidence library</button><button class="nav-item" id="nav-activity"><span data-icon="activity"></span>Activity</button></nav>
+    <div class="case-heading"><h2>Launch cases</h2><span id="issue-total" class="count">0</span></div>
+    <label class="case-filter"><span class="sr-only">Filter launch cases</span><input id="case-search" type="search" placeholder="Find a component…" autocomplete="off"></label>
+    <div id="issue-list" class="issue-list"><div class="skeleton"></div><div class="skeleton"></div></div>
+    <div class="sidebar-bottom"><button class="connection-link" id="connections-button"><span data-icon="plug"></span><span>Connections</span><span id="connection-count">—</span></button><div class="user-profile"><span class="avatar">H</span><div><strong>Your workspace</strong><small>Private · Hamburg</small></div><span class="online-dot" title="Local workspace"></span></div></div>
+  </aside>
+  <div class="workspace-main">
+    <header class="topbar"><div class="breadcrumbs"><button class="icon-button mobile-menu" id="menu-button" aria-label="Toggle navigation"><span data-icon="menu"></span></button><span class="breadcrumb-icon" data-icon="layers"></span><span>Grand Heist 6</span><span class="breadcrumb-divider">/</span><strong>Launch workspace</strong></div><div class="top-actions"><span class="live-status" id="source-mode"><span></span>Connecting</span><button class="icon-button" id="inspector-toggle" aria-label="Toggle evidence inspector" aria-expanded="true"><span data-icon="panel"></span></button></div></header>
+    <main class="workspace-body">
+      <section class="agent-column" aria-label="Interactive launch agent">
+        <div class="page-heading"><div><div class="project-eyebrow"><span class="project-dot"></span>Launch operations</div><h1>Keep the line running.</h1><p>A clear next move, backed by your customer data.</p></div><button class="button button-primary" id="run-agent"><span data-icon="play"></span>Run agent</button></div>
+        <section class="launch-strip" aria-label="Launch status"><div class="launch-progress"><span class="progress-ring" id="progress-ring"><span id="progress-percent">—</span></span><div><strong id="packed-total">Reading launch plan</strong><span>copies packed</span></div></div><div class="strip-separator"></div><div><span class="metric-label">Open risks</span><strong id="risk-count">—</strong></div><div><span class="metric-label">Launch date</span><strong id="launch-date">—</strong></div><div class="launch-location"><span data-icon="pin"></span>Hamburg</div></section>
+        <div id="global-error" class="notice error" role="alert" hidden></div>
+        <div class="thread-heading"><span><span class="agent-mini" aria-hidden="true">✳</span>Rescue agent</span><span class="mode-badge" id="agent-mode">Evidence mode</span></div>
+        <div class="conversation" id="agent-thread" aria-live="polite" aria-label="Agent conversation"></div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form class="composer" id="composer"><label class="sr-only" for="chat-input">Ask about this launch case</label><textarea id="chat-input" rows="2" placeholder="Ask about a risk, a source, or your next move…"></textarea><div class="composer-bottom"><span><span class="small-dot"></span><span id="composer-context">Customer data connected</span></span><div><kbd>Enter to send</kbd><button class="send-button" id="send-message" type="submit" aria-label="Send message"><span data-icon="send"></span></button></div></div></form>
+        <p class="composer-note" id="composer-note">Every recommendation starts with evidence. You approve external actions.</p>
+        <div class="workspace-footer"><span id="checked-at">Waiting for data</span><button id="sync-button">Sync portal</button><button id="refresh-button">Rescan files</button></div>
+      </section>
+      <aside class="inspector" id="inspector" aria-label="Case evidence and actions"><div class="inspector-heading"><div><span data-icon="shield"></span><strong>Case inspector</strong></div><span class="inspector-label">Source of truth</span></div><div id="issue-detail" class="issue-detail"><div class="empty-state">Select a case to inspect its evidence.</div></div></aside>
+    </main>
+  </div>
+</div>
+<dialog id="connections-dialog"><form method="dialog" class="dialog-heading"><div><span class="project-eyebrow">Workspace settings</span><h2>Connections</h2></div><button class="icon-button" aria-label="Close connections">×</button></form><p class="panel-intro">Connection states come from your running service.</p><div id="integrations"></div><p id="snapshot-at" class="data-note"></p><div id="warnings"></div><p id="poll-note" class="data-note"></p></dialog>
+<dialog id="command-dialog"><div class="command-search"><span data-icon="search"></span><input id="command-search" aria-label="Search commands and cases" placeholder="Find a case or action…"><button class="icon-button" id="close-command" aria-label="Close search">×</button></div><div id="command-results"></div><p class="command-footnote">Use Tab to navigate · Escape to close</p></dialog>
+<div class="toast" id="toast" role="status" hidden></div>
+</body></html>

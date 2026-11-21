@@ -23,6 +23,7 @@ from app.sync import PortalSync, safe_path, now
 from app import investigator
 from app.mailbox import Inbox
 from app.recovery import scenario, aware
+from app import chat
 
 lock = threading.RLock()
 store = Store(config.STATE_DIR / 'cases.sqlite3')
@@ -77,7 +78,7 @@ def issue_detail(issue_id):
     if issue is None:
         raise HTTPException(404, 'Issue not found in current evidence')
     return {**issue, 'case': store.get(issue), 'events': store.events(issue_id),
-            'integrations': config.integrations(), 'replies': current_inbox().list(issue_id)}
+            'integrations': config.integrations(), 'replies': current_inbox().list(issue_id), 'chat': store.chat(issue_id)}
 
 
 async def poll():
@@ -341,6 +342,41 @@ def review_reply(issue_id: str, review: OfferReview):
 
 class AgentRun(BaseModel):
     issue_id: str = 'game-card-shortage'
+
+
+class ChatMessage(BaseModel):
+    text: str = Field(min_length=1, max_length=2000)
+
+
+@app.post('/api/issues/{issue_id}/chat')
+def chat_message(issue_id: str, message: ChatMessage):
+    question = message.text.strip()
+    if not question:
+        raise HTTPException(422, 'Write a question before sending')
+    with lock:
+        issue = next((i for i in snapshot.get('issues', []) if i['id'] == issue_id), None)
+        if issue is None:
+            raise HTTPException(404, 'Case not found')
+        case = store.get(issue)
+        version = case['source_fingerprint']
+        local_overview = dict(snapshot)
+    mode = 'evidence'
+    if config.integrations()['ai_enabled']:
+        try:
+            response = investigator.run(issue, config.DATA_DIR, question=question)
+            answer = response['text']
+            mode = 'model'
+        except Exception:
+            raise HTTPException(502, 'Model response failed. Your case is unchanged; try again or review the linked sources.')
+    else:
+        answer = chat.answer(question, issue, case, local_overview)
+    with lock:
+        detail = issue_detail(issue_id)
+        if detail['case']['source_fingerprint'] != version:
+            raise HTTPException(409, 'Sources changed while answering. Ask again using the current case.')
+        store.chat_turn(issue_id, question, answer, mode, version)
+        store.event(issue_id, 'question_answered', 'Answered a case question from ' + ('the configured model.' if mode == 'model' else 'the source records. No model was invoked.'))
+        return issue_detail(issue_id)
 
 
 def agent_cycle(issue_id):

@@ -74,3 +74,10 @@ Implementation complete for Milestone 1. All source is on codex/launch-rescue-mv
 
 ## Latest validation
 59 tests passed, 1 Windows symlink-permission test skipped. JavaScript syntax check passed. Real portal-connected Run agent completed to awaiting_human_review without error and drafted an inquiry; no email sent. Synthetic reply import -> named review -> recovery scenario verified without altering source stock. Repeated cycles and replies cannot bypass duplicate-delivery guards. Live model and SMTP/IMAP remain unconfigured, so do not describe them as verified live integrations.
+
+## Third checkpoint: agent workspace UI and case chat (uncommitted at time of writing)
+- UI redesigned as 3-column agent workspace (see docs/UI_DESIGN.md). app/chat.py gives evidence-mode answers; with a configured model, POST /api/issues/{id}/chat calls investigator.run(question=...). Turns persist in the SQLite `conversation` table and are rejected (409) if sources change mid-answer; model errors return a generic 502 and store nothing.
+- Added tests/test_chat.py (8 tests: evidence mode, no send, validation, 404, model mode, 502, stale-source 409).
+- Found the retained dev server on :8000 was stale (chat route 405); restarted it. Restart after pulling code changes.
+- Verified: pytest all passing, live POST /api/issues/game-card-shortage/chat 200 with real-data answer, UI renders at desktop width with Portal connected / Evidence mode labels.
+- Not verified: 375px mobile layout visually, live model chat (no key).

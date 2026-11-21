@@ -34,7 +34,7 @@ def document_text(path: Path) -> str:
     return 'This source needs visual human review. No OCR result is available.'
 
 
-def run(issue: dict, root: Path, progress=None) -> dict:
+def run(issue: dict, root: Path, progress=None, question=None) -> dict:
     key, model = os.getenv('OPENAI_API_KEY'), os.getenv('LIO_AI_MODEL')
     if not key or not model:
         raise ValueError('Set OPENAI_API_KEY and LIO_AI_MODEL in local .env to enable model investigation.')
@@ -48,7 +48,7 @@ def run(issue: dict, root: Path, progress=None) -> dict:
         'questions to supplier; who must approve, based on supplied policy. If recovery is unconfirmed say so. '
         'You cannot send email, book freight, change stock, or approve expenditure. Limit yourself to investigation. '
         'Finish with one specific recommended next action and its preconditions.')
-    messages = [{'role': 'user', 'content': f"Investigate {issue['id']} and propose the next evidence-backed recovery step. Use get_current_issue first."}]
+    messages = [{'role': 'user', 'content': f"Investigate {issue['id']}. Use get_current_issue first. " + (question or 'Propose the next evidence-backed recovery step.')}]
     trace = []
 
     def call(name, args):

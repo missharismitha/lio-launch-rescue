@@ -17,6 +17,7 @@ class Store:
         with self.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS cases (id TEXT PRIMARY KEY, payload TEXT NOT NULL)')
             db.execute('CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, issue_id TEXT, at TEXT, kind TEXT, message TEXT)')
+            db.execute('CREATE TABLE IF NOT EXISTS conversation (id INTEGER PRIMARY KEY, issue_id TEXT, at TEXT, role TEXT, text TEXT, mode TEXT, source_fingerprint TEXT)')
 
     def connect(self):
         return sqlite3.connect(self.path, timeout=10)
@@ -52,3 +53,15 @@ class Store:
         with self.connect() as db:
             db.row_factory = sqlite3.Row
             return [dict(r) for r in db.execute('SELECT at,kind,message FROM events WHERE issue_id=? ORDER BY id DESC', (issue_id,))]
+
+    def chat(self, issue_id):
+        with self.connect() as db:
+            db.row_factory = sqlite3.Row
+            rows = list(db.execute('SELECT at,role,text,mode,source_fingerprint FROM conversation WHERE issue_id=? ORDER BY id DESC LIMIT 40', (issue_id,)))
+            return [dict(row) for row in reversed(rows)]
+
+    def chat_turn(self, issue_id, question, answer, mode, source_fingerprint):
+        with self.connect() as db:
+            db.executemany('INSERT INTO conversation(issue_id,at,role,text,mode,source_fingerprint) VALUES(?,?,?,?,?,?)',
+                           [(issue_id, now(), 'user', question, mode, source_fingerprint),
+                            (issue_id, now(), 'assistant', answer, mode, source_fingerprint)])
