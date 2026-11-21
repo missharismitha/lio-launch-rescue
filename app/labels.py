@@ -82,6 +82,7 @@ TOOL_LABELS = {
     'find_conflicts': ('Looked for conflicting records', 'auto'),
     'check_policy': ('Checked the approval policy', 'auto'),
     'price_option': ('Priced an option', 'auto'),
+    'compare_transport': ('Compared transport modes', 'auto'),
     'whatif': ('Ran a what-if on arrival time', 'auto'),
     'propose_option': ('Proposed a recovery option', 'draft'),
     'draft_supplier_message': ('Drafted a supplier message', 'draft'),

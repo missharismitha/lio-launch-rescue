@@ -99,8 +99,8 @@ def test_unknown_price_stays_null_and_never_a_number(tmp_path):
     assert air['price_eur'] is None and air['total_eur'] is None
     assert any('Unit price' in u for u in air['unknown'])
     body = result['escalation']['body']
-    assert 'price unknown, assumption needed' in body
-    assert 'Cost: EUR' not in body
+    assert 'price unknown, assumption needed' in body or 'Goods cost: not known yet.' in body
+    assert 'Cost: EUR' not in body and 'Total cost' not in body
     shown = public.public_crew({'crew': result, 'source_fingerprint': 'x'})['options'][0]
     assert shown['price_eur'] is None
 
@@ -238,7 +238,7 @@ def test_air_freight_above_monthly_limit_goes_to_the_cpo_and_names_a_role(tmp_pa
     escalation = result['escalation']
     assert escalation['to_role'] == 'CPO' and escalation['to_name'] == 'Cleo Chief'
     assert escalation['subject'] == 'Decision needed within the hour: Synthetic card shortage'
-    for needed in ('Cost against copies gained', 'EUR 303,000', 'Copies gained', 'Deadline: Sun'):
+    for needed in ('Total cost: EUR 303,000', 'Copies gained', 'Deadline: Sun'):
         assert needed in escalation['body']
     assert 'assumption' in escalation['body'].lower()
 
@@ -462,7 +462,7 @@ def test_public_json_is_free_of_files_paths_and_addresses(workflow, tmp_path, si
     assert set(detail['escalation']) == {'to_role', 'subject', 'body', 'approved'}
     for option in detail['options']:
         assert set(option) == {'title', 'detail', 'price_eur', 'eta', 'copies_gained', 'approver', 'feasible', 'kind', 'arrival_known',
-                               'copies_gained_source', 'potential_units', 'recommended'}
+                               'copies_gained_source', 'potential_units', 'recommended', 'price_basis'}
         assert option['approver'] is None or set(option['approver']) <= {'role', 'vacancy', 'provisional'}
     assert set(detail['trace'][0]) == {'agent', 'action', 'outcome', 'autonomy'}
     assert set(detail['value']) == {'headline_eur', 'basis', 'label', 'claim_eur'}

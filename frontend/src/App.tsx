@@ -6,6 +6,7 @@ import { DetailsSheet } from '@/components/DetailsSheet';
 import { Header } from '@/components/Header';
 import { AgentRail } from '@/components/AgentRail';
 import { HoldNote, OptionList } from '@/components/Options';
+import { TransportSection } from '@/components/Transport';
 import { PackingCard } from '@/components/Packing';
 import { PrintBrief } from '@/components/PrintBrief';
 import { EmptyState, ErrorState, Skeleton } from '@/components/States';
@@ -23,13 +24,14 @@ function Dashboard({ d, o }: { d: Detail; o: Overview }) {
     <>
       <Header d={d} o={o} />
       <main id="main" className="mx-auto grid max-w-[1120px] gap-8 px-4 pb-16 sm:px-8 sm:pb-24 lg:grid-cols-12 lg:gap-x-16 print:hidden">
-        <div className="grid content-start gap-8 sm:gap-14 lg:col-span-7">
+        <div className="grid grid-cols-1 content-start gap-8 sm:gap-14 lg:col-span-7">
           <DecisionCard d={d} o={o} />
           <PackingCard d={d} o={o} />
           <OptionList d={d} />
+          <TransportSection t={d.transport} />
         </div>
-        <div className="grid content-start gap-8 sm:gap-14 lg:col-span-5">
-          <Card className="hidden gap-4 border-t border-line pt-8 lg:grid" aria-label="What the agent did">
+        <div className="grid grid-cols-1 content-start gap-8 sm:gap-14 lg:col-span-5">
+          <Card className="hidden grid-cols-1 gap-4 border-t border-line pt-8 lg:grid" aria-label="What the agent did">
             <h2 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em]">What the agent did</h2>
             {hasAgentRows || o.agent?.running ? <AgentRail d={d} o={o} /> : <p className="m-0 text-ink-2">The agent has not run yet.</p>}
           </Card>

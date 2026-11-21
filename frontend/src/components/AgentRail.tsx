@@ -109,7 +109,7 @@ export function AgentRail({ d, o, legend = false }: { d: Detail; o: Overview; le
   const mode = runModeLine(d);
   const live = agent.running || busy;
   return (
-    <div data-demo="agent" data-testid="agent-rail" className="grid gap-4">
+    <div data-demo="agent" data-testid="agent-rail" className="grid grid-cols-1 gap-4">
       {live ? (
         <p className="m-0 text-[14px] text-ink-2" role="status">
           Working: {String(agent.steps?.slice(-1)[0]?.message || 'Starting')}

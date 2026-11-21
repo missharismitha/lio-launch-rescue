@@ -120,13 +120,29 @@ def month_to_date_air(assumptions) -> float | None:
 
 # ---------------------------------------------------------------- pricing
 
+def freight_per_unit(option, assumptions, mode, notes, unknown):
+    """(per-unit freight EUR or None, price_basis). A rate set by hand wins. A market estimate is used only when the
+    assumptions file says "use_freight_estimates": true, and is then flagged 'estimate' (never shown as customer data)."""
+    per_unit = to_number(_setting(assumptions, 'freight_eur_per_unit_by_mode', mode)) if mode else None
+    if per_unit is not None:
+        notes.append(f'Freight of {per_unit:g} EUR per unit by {mode} is an assumption, to be confirmed.')
+        return per_unit, 'assumption'
+    estimate = to_number(option.get('estimate_per_unit_eur'))
+    if estimate is not None and _setting(assumptions, 'use_freight_estimates') is True:
+        notes.append(f"Estimated from market rate ({option.get('estimate_basis') or 'see the transport comparison'}); to be confirmed. "
+                     f'About {estimate:g} EUR per unit by {mode}.')
+        return estimate, 'estimate'
+    unknown.append(f'Freight rate for {mode or "this transport mode"} is not set.')
+    return None, None
+
+
 def price_option(option: dict, issue: dict, data_dir, assumptions: dict, policy=None, as_of=None) -> dict:
     """Price one recovery option. Unknown parts make the total None and are listed."""
     quantity = int(option.get('quantity') or 0)
     mode = (option.get('mode') or '').lower() or None
     material = option.get('material_id') or (issue or {}).get('material_id')
     notes, unknown = [], []
-    goods = freight = unit_price = goods_ordered = None
+    goods = freight = unit_price = goods_ordered = freight_basis = None
     currency = rate = None
 
     commitment = option.get('commitment')
@@ -148,12 +164,9 @@ def price_option(option: dict, issue: dict, data_dir, assumptions: dict, policy=
             else:
                 goods_ordered = round(quantity * unit_price * rate, 2)
         code = option.get('incoterm_required')
-        per_unit = to_number(_setting(assumptions, 'freight_eur_per_unit_by_mode', mode)) if mode else None
-        if per_unit is None:
-            unknown.append(f'Freight rate for {mode or "this transport mode"} is not set.')
-        else:
+        per_unit, freight_basis = freight_per_unit(option, assumptions, mode, notes, unknown)
+        if per_unit is not None:
             freight = round(quantity * per_unit, 2)
-            notes.append(f'Freight of {per_unit:g} EUR per unit by {mode} is an assumption, to be confirmed.')
         notes.append((f'Under {code} the buyer pays freight; ' if code else 'The buyer pays freight under the confirmed term; ')
                      + 'the confirmation also says freight is invoiced; the amount is not known.')
     else:
@@ -177,23 +190,25 @@ def price_option(option: dict, issue: dict, data_dir, assumptions: dict, policy=
                     notes.append(f'Exchange rate of {rate:g} EUR per {currency} is an assumption, to be confirmed.')
                 goods = round(quantity * unit_price * rate, 2)
 
-        per_unit = to_number(_setting(assumptions, 'freight_eur_per_unit_by_mode', mode)) if mode else None
-        if per_unit is None:
-            unknown.append(f'Freight rate for {mode or "this transport mode"} is not set.')
-        else:
+        per_unit, freight_basis = freight_per_unit(option, assumptions, mode, notes, unknown)
+        if per_unit is not None:
             freight = round(quantity * per_unit, 2)
-            notes.append(f'Freight of {per_unit:g} EUR per unit by {mode} is an assumption, to be confirmed.')
 
     total = round(goods + freight, 2) if goods is not None and freight is not None else None
     result = {'title': option.get('title'), 'material_id': material, 'quantity': quantity, 'mode': mode, 'eta': option.get('eta'),
               'goods_eur': goods, 'freight_eur': freight, 'total_eur': total, 'unit_price': unit_price, 'currency': currency,
               'fx_rate': rate, 'assumptions': notes, 'unknown': unknown, 'commitment': commitment}
+    if freight_basis == 'estimate':
+        result['price_basis'] = 'estimate'
     if commitment == 'freight':
         result['goods_ordered_eur'] = goods_ordered
     for passthrough in ('copies_gained', 'supplier_id', 'id', 'kind'):
         if passthrough in option:
             result[passthrough] = option[passthrough]
     result['approver'] = _approver_for(result, issue, data_dir, assumptions, policy, as_of)
+    if result.get('price_basis') == 'estimate' and isinstance(result['approver'], dict) and result['approver'].get('role'):
+        result['approver']['provisional'] = True  # routed on an estimated freight cost: the real tier follows the confirmed cost
+        result['approver']['why'] = ((result['approver'].get('why') or '') + ' Based on an estimated freight cost; confirm the quote.').strip()
     return result
 
 

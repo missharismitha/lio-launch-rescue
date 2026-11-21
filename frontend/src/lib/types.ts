@@ -137,7 +137,43 @@ export interface Integrations {
   email_enabled?: boolean;
 }
 
+export type TransportModeName = 'air' | 'sea' | 'road';
+
+export interface TransportMode {
+  mode?: TransportModeName | string;
+  route?: string;
+  feasible?: boolean;
+  transit_days?: number | null;
+  arrives_at?: string | null;
+  hours_margin?: number | null;
+  cost_eur?: { low?: number | null; base?: number | null; high?: number | null } | null;
+  cost_per_unit_eur?: number | null;
+  basis?: string;
+  rank?: number | null;
+  verdict?: string;
+}
+
+export interface TransportLane {
+  supplier?: string;
+  country?: string;
+  material?: string;
+  quantity?: number | null;
+  fastest?: TransportModeName | string | null;
+  cheapest_feasible?: TransportModeName | string | null;
+  modes?: TransportMode[];
+}
+
+export interface Transport {
+  estimate?: boolean;
+  as_of?: string | null;
+  deadline?: string | null;
+  lanes?: TransportLane[];
+  cross_check?: { delivered_premium_pct?: number | null; estimate_within_premium?: boolean | null; note?: string } | null;
+  assumptions?: { label?: string; value?: string; source?: string; kind?: 'market' | 'assumption' | string }[];
+}
+
 export interface Detail {
+  transport?: Transport | null;
   id?: string;
   title?: string;
   shortage?: number;

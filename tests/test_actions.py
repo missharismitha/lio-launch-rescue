@@ -27,8 +27,9 @@ def test_supplier_draft_has_only_supplier_facing_facts():
 
 def test_supplier_draft_without_option_matches_the_legacy_text():
     body = actions.supplier_draft(ISSUE)['body']
-    assert 'We need about 600 more units to reach Hamburg and be usable before launch. Could you confirm:' in body
+    assert 'We need about 600 more units usable before launch.' in body and 'Please reply with' in body
     assert 'please quote' not in body
+    assert len(body.splitlines()) <= 10
 
 
 def test_escalation_names_the_approver_and_injects_numbers():
@@ -36,9 +37,9 @@ def test_escalation_names_the_approver_and_injects_numbers():
     assert draft['to_role'] == 'CPO' and draft['to_name'] == 'Cleo Chief'
     assert draft['subject'] == 'Decision needed within the hour: Synthetic card shortage'
     body = draft['body']
-    assert 'Cost against copies gained: EUR 4,200 for 600 copies, about EUR 7 per copy gained.' in body
-    assert 'Copies gained: 600.' in body and 'Deadline: Sun 20:00.' in body and 'Packing hours left: 22.5 h.' in body
-    assert 'Why you: Air freight is above the monthly limit.' in body and 'assumption' in body and 'Confirm the arrival time' in body
+    assert 'Total cost: EUR 4,200, about EUR 7 per copy gained.' in body
+    assert 'Copies gained: 600.' in body and 'Deadline: Sun 20:00, 22.5 h of packing left.' in body
+    assert 'Why you: Air freight is above the monthly limit.' in body and 'Confirm the arrival time' in body
     assert 'not sent by the application' in body
     assert {n['label'] for n in draft['numbers']} >= {'copies gained', 'cost in EUR', 'cost per copy gained in EUR'}
     assert not FILE_RE.search(body)
@@ -47,9 +48,31 @@ def test_escalation_names_the_approver_and_injects_numbers():
 def test_escalation_with_unknown_price_says_so_and_never_invents_a_number():
     draft = actions.escalation_draft(ISSUE, BRIEF, {**OPTION, 'total_eur': None, 'copies_gained': None}, CPO, VALUE)
     body = draft['body']
-    assert 'price unknown, assumption needed' in body and 'Cost against copies gained: cannot be worked out yet' in body
-    assert 'Cost: EUR' not in body and 'per copy gained' not in body
+    assert 'Cost: price unknown, assumption needed.' in body
+    assert 'Cost: EUR' not in body and 'Total cost' not in body and 'per copy gained' not in body
     assert next(n for n in draft['numbers'] if n['label'] == 'cost in EUR')['value'] is None
+
+
+def test_escalation_shows_the_freight_cost_and_labels_an_estimate():
+    option = {**OPTION, 'freight_eur': 1800.0, 'price_basis': 'estimate'}
+    body = actions.escalation_draft(ISSUE, BRIEF, option, CPO, VALUE)['body']
+    assert 'Freight: EUR 1,800 by air freight (estimate, to be confirmed).' in body
+    assert 'Total cost: EUR 4,200 (estimate, to be confirmed), about EUR 7 per copy gained.' in body
+    assert next(n for n in actions.escalation_draft(ISSUE, BRIEF, option, CPO, VALUE)['numbers'] if n['label'] == 'freight in EUR')['value'] == 1800.0
+
+
+def test_freight_known_but_goods_unknown_is_not_passed_off_as_a_total():
+    option = {**OPTION, 'freight_eur': 1800.0, 'total_eur': None, 'price_basis': 'estimate'}
+    body = actions.escalation_draft(ISSUE, BRIEF, option, CPO, VALUE)['body']
+    assert 'Freight: EUR 1,800' in body and 'Goods cost: not known yet.' in body and 'Total cost' not in body
+
+
+def test_escalation_is_short_and_caps_open_points():
+    brief = {**BRIEF, 'verify_next': [f'Check item {i}' for i in range(8)]}
+    body = actions.escalation_draft(ISSUE, brief, OPTION, CPO, VALUE, hours_left=22.5)['body']
+    bullets = [line for line in body.splitlines() if line.startswith('- ')]
+    assert len(bullets) == actions.MAX_OPEN_POINTS and 'Check item 3' not in body
+    assert len(body.splitlines()) <= 14
 
 
 def test_escalation_without_a_known_approver_needs_human_review():

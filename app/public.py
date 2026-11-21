@@ -164,12 +164,66 @@ def public_supplier_drafts(drafts):
              'body': (d.get('body') or '')[:3000]} for d in (drafts or [])[:3] if isinstance(d, dict)]
 
 
+MODES = ('air', 'sea', 'road')
+
+
+def _mode(value):
+    return value if value in MODES else None
+
+
+def _iso(value):
+    text = safe_text(str(value or ''), 40)
+    return text if re.fullmatch(r'\d{4}-\d{2}-\d{2}T[\d:+\-.Z]{4,16}', text) else None
+
+
+def _cost(value):
+    if not isinstance(value, dict):
+        return None
+    shown = {k: _number(value.get(k), 2) for k in ('low', 'base', 'high')}
+    return shown if all(v is not None for v in shown.values()) else None
+
+
+def public_transport(transport):
+    """Transport comparison (all costs are estimates). Allowlist only: no file names, paths, URLs or addresses; sources by publisher and period."""
+    if not isinstance(transport, dict) or not transport.get('lanes'):
+        return None
+    lanes = []
+    for lane in (transport.get('lanes') or [])[:6]:
+        if not isinstance(lane, dict):
+            continue
+        modes = []
+        for m in (lane.get('modes') or [])[:3]:
+            if not isinstance(m, dict) or _mode(m.get('mode')) is None:
+                continue
+            modes.append({'mode': m['mode'], 'route': safe_text(m.get('route') or '', 100), 'feasible': bool(m.get('feasible')),
+                          'transit_days': _number(m.get('transit_days'), 1), 'arrives_at': _iso(m.get('arrives_at')),
+                          'hours_margin': _number(m.get('hours_margin'), 1), 'cost_eur': _cost(m.get('cost_eur')),
+                          'cost_per_unit_eur': _number(m.get('cost_per_unit_eur'), 4), 'basis': safe_text(m.get('basis') or '', 400),
+                          'rank': m.get('rank') if isinstance(m.get('rank'), int) and not isinstance(m.get('rank'), bool) else None,
+                          'verdict': safe_text(m.get('verdict') or '', 80)})
+        lanes.append({'supplier': safe_text(lane.get('supplier') or '', 60), 'country': safe_text(lane.get('country') or '', 3),
+                      'material': safe_text(lane.get('material') or '', 40), 'quantity': _number(lane.get('quantity')),
+                      'fastest': _mode(lane.get('fastest')), 'cheapest_feasible': _mode(lane.get('cheapest_feasible')), 'modes': modes})
+    check = transport.get('cross_check') if isinstance(transport.get('cross_check'), dict) else None
+    shown_check = None
+    if check:
+        within = check.get('estimate_within_premium')
+        shown_check = {'delivered_premium_pct': _number(check.get('delivered_premium_pct'), 1),
+                       'estimate_within_premium': within if isinstance(within, bool) else None,
+                       'note': safe_text(check.get('note') or '', 500)}
+    assumptions = [{'label': safe_text(a.get('label') or '', 100), 'value': safe_text(str(a.get('value') or ''), 80),
+                    'source': safe_text(a.get('source') or '', 300), 'kind': a.get('kind') if a.get('kind') in ('market', 'assumption') else 'assumption'}
+                   for a in (transport.get('assumptions') or [])[:30] if isinstance(a, dict)]
+    return {'estimate': True, 'as_of': _iso(transport.get('as_of')), 'deadline': _iso(transport.get('deadline')), 'lanes': lanes,
+            'cross_check': shown_check, 'assumptions': assumptions}
+
+
 def public_crew(case, source_fingerprint=None):
     """The decision-room fields: options, brief, value, trace, escalation, numbers_verified, conflicts."""
     case = case or {}
     crew = case.get('crew') if isinstance(case.get('crew'), dict) else None
     result = {'options': [], 'brief': None, 'value': None, 'trace': [], 'escalation': None, 'numbers_verified': False, 'conflicts': [],
-              'holds': [], 'supplier_drafts': [], 'run_mode': 'rule_based', 'agent': public_agent_run(None), 'approvals': [],
+              'holds': [], 'supplier_drafts': [], 'transport': None, 'run_mode': 'rule_based', 'agent': public_agent_run(None), 'approvals': [],
               'last_good_at': None}
     if not crew:
         return result
@@ -183,7 +237,7 @@ def public_crew(case, source_fingerprint=None):
             'recommended': bool(option.get('recommended')), 'kind': kind, 'arrival_known': bool(option.get('arrival_known')), 'copies_gained_source': source,
             'potential_units': _number(option.get('potential_units')),
             'title': safe_text(option.get('title') or '', 100), 'detail': safe_text(option.get('detail') or '', 200),
-            'price_eur': _number(option.get('price_eur')), 'eta': safe_text(option.get('eta_label') or '', 20) or None,
+            'price_eur': _number(option.get('price_eur')), 'price_basis': 'estimate' if option.get('price_basis') == 'estimate' else None, 'eta': safe_text(option.get('eta_label') or '', 20) or None,
             'copies_gained': _number(option.get('copies_gained')), 'approver': _approver_ref(option.get('approver')),
             'feasible': feasible})
     brief = crew.get('brief') if isinstance(crew.get('brief'), dict) else None
@@ -219,6 +273,7 @@ def public_crew(case, source_fingerprint=None):
     result['holds'] = public_holds(crew.get('holds'))
     result['supplier_drafts'] = public_supplier_drafts(crew.get('supplier_drafts'))
     result['numbers_verified'] = bool(crew.get('numbers_verified'))
+    result['transport'] = public_transport(crew.get('transport'))
     result['conflicts'] = [{'field': safe_text(c.get('field') or '', 60), 'why': safe_text(c.get('why') or '', 200),
                             'confidence': safe_text(str(c.get('confidence') or ''), 20)}
                            for c in (crew.get('conflicts') or [])[:8] if isinstance(c, dict)]

@@ -14,7 +14,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from app import actions, holds as holds_mod, investigator, labels, pricing, public, verify
+from app import actions, freight, holds as holds_mod, investigator, labels, pricing, public, verify
 from app import policy as policy_mod
 from app import value as value_mod
 from app.recovery import BERLIN, packing_hours
@@ -209,6 +209,35 @@ def _hold_supplier_ids(board):
     return {h.get('supplier_id') for h in board.get('holds') or [] if h.get('supplier_id')}
 
 
+def transport_for(board):
+    """The transport comparison for this issue (memoised on the board). None when the records cannot support one. Never raises."""
+    if 'transport' in board:
+        return board['transport']
+    try:
+        board['transport'] = freight.build(board['data_dir'], board['issue'], board['now'], board.get('deadline'), board.get('assumptions') or {})
+    except Exception:
+        board['transport'] = None
+    return board['transport']
+
+
+def lane_mode(board, supplier_id, default='air'):
+    """Fastest mode of the supplier's lane that makes the deadline, else the fastest overall, else `default`."""
+    chosen, _feasible = freight.best_mode(freight.lane_for(transport_for(board), supplier_id))
+    return chosen['mode'] if chosen else default
+
+
+MODE_TITLE = {'air': 'Air freight the remaining balance', 'sea': 'Sea freight the remaining balance', 'road': 'Truck the remaining balance'}
+
+
+def attach_estimate(board, shape):
+    """Copy the lane's per-unit base estimate onto an option (explicit, labelled). Only priced if the assumptions allow it."""
+    lane = freight.lane_for(transport_for(board), shape.get('supplier_id'))
+    entry = next((m for m in (lane or {}).get('modes') or [] if m['mode'] == shape.get('mode')), None)
+    if entry and entry.get('cost_per_unit_eur') is not None and shape.get('estimate_per_unit_eur') is None:
+        shape = dict(shape, estimate_per_unit_eur=entry['cost_per_unit_eur'], estimate_basis=entry['basis'][:140])
+    return shape
+
+
 def rule_options(board):
     """Options from the records alone: expedite the balance, another supplier's stock if any is inbound."""
     issue, data_dir = board['issue'], board['data_dir']
@@ -217,13 +246,14 @@ def rule_options(board):
     balance = sum(_int(s.get('balance')) or 0 for s in issue.get('shipments') or [])
     primary = sorted(_primary_supplier_ids(issue, data_dir))
     if balance > 0 and shortage > 0:
-        options.append({'title': 'Air freight the remaining balance', 'quantity': min(balance, shortage), 'mode': 'air', 'eta': None,
+        mode = lane_mode(board, primary[0] if primary else None)
+        options.append({'title': MODE_TITLE.get(mode, MODE_TITLE['air']), 'quantity': min(balance, shortage), 'mode': mode, 'eta': None,
                         'supplier': (issue.get('supplier') or {}).get('name'), 'supplier_id': primary[0] if primary else None,
                         'kind': 'recovery'})
     held = _hold_supplier_ids(board)
     alt = [a for a in _alt_supplier_ids(issue, data_dir) if a not in held]
     if alt and shortage > 0:
-        options.append({'title': 'Ask another supplier for stock', 'quantity': shortage, 'mode': 'air', 'eta': None,
+        options.append({'title': 'Ask another supplier for stock', 'quantity': shortage, 'mode': lane_mode(board, alt[0]), 'eta': None,
                         'supplier': None, 'supplier_id': alt[0], 'kind': 'recovery'})
     return options
 
@@ -538,7 +568,7 @@ def pricer(board):
                         approver={'role': None, 'name': None, 'why': None, 'vacancy': False, 'route': [], 'needs_cpo': False})
             priced.append(item)
             continue
-        option = dict(shape, id=index)
+        option = attach_estimate(board, dict(shape, id=index))
         item = {**shape, 'sid': index, **pricing.price_option(option, issue, board['data_dir'], board['assumptions'], policy=board['policy'],
                                                 as_of=board['now'].date().isoformat())}
         item['unknown'] = list(item.get('unknown') or []) + list(shape.get('extra_unknown') or [])
@@ -662,7 +692,7 @@ def finalize_options(board):
             'potential_units': item.get('potential_units'), 'stock_established': bool(item.get('stock_established')),
             'hold_id': item.get('hold_id'), 'po_number': item.get('po_number'), 'commitment': item.get('commitment'),
             'incoterm_required': item.get('incoterm_required'), 'blocker_type': item.get('blocker_type'),
-            'goods_ordered_eur': item.get('goods_ordered_eur')})
+            'goods_ordered_eur': item.get('goods_ordered_eur'), 'price_basis': item.get('price_basis')})
     board['options'] = final
 
 
@@ -816,7 +846,8 @@ def drafter_escalation(board, chosen=None):
     top = chosen or board.get('top') or {}
     if top.get('kind') not in (None, 'recovery', 'release'):
         top = next((i for i in board.get('ranked') or [] if i.get('kind') == 'allocation'), top)
-    option = {k: top.get(k) for k in ('title', 'mode', 'quantity', 'total_eur', 'copies_gained', 'assumptions', 'unknown', 'kind', 'incoterm_required')}
+    option = {k: top.get(k) for k in ('title', 'mode', 'quantity', 'total_eur', 'freight_eur', 'price_basis', 'copies_gained', 'assumptions',
+                                      'unknown', 'kind', 'incoterm_required')}
     approver = board.get('approver')
     if chosen is not None and (chosen.get('approver') or {}).get('role'):
         approver = actions.pick_approver(chosen, board['policy'])
@@ -1042,7 +1073,7 @@ def run(issue_id, issue, products, hours_left, data_dir, state_dir, *, investiga
         rule_path(board)
     if isinstance(board.get('brief'), dict):
         board['brief']['headline'] = headline_for(board)
-    return {'options': board['options'], 'brief': board['brief'], 'value': board['value'], 'claim': board['claim'],
+    return {'transport': transport_for(board), 'options': board['options'], 'brief': board['brief'], 'value': board['value'], 'claim': board['claim'],
             'trace': board['trace'], 'escalation': board['escalation'], 'supplier_draft': board['supplier_draft'],
             'supplier_drafts': board['supplier_drafts'], 'holds': board['holds'], 'top_kind': (board.get('top') or {}).get('kind'),
             'numbers_verified': bool(board['numbers_verified']), 'conflicts': board['conflicts'],

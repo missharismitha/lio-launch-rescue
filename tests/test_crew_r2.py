@@ -34,7 +34,7 @@ def test_terms_change_goes_to_the_exceptions_role_and_names_both_roles(tmp_path)
     assert first['approver']['note'] == 'Terms change; freight within Category Lead limit'
     assert result['brief']['approver']['role'] == 'Head of Procurement' and result['escalation']['to_role'] == 'Head of Procurement'
     body = result['escalation']['body']
-    assert 'Terms change approval: Head of Procurement (Dr. Hana Head).' in body and 'Air freight approval: Category Lead (Gus Games).' in body
+    assert 'terms change by Head of Procurement (Dr. Hana Head)' in body and 'air freight by Category Lead (Gus Games)' in body
     shown = public.public_crew({'crew': result, 'source_fingerprint': 'x'})['options'][0]['approver']
     assert shown['note'] and shown['freight_approver']['role'] == 'Category Lead'
 

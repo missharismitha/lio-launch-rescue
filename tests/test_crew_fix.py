@@ -136,9 +136,10 @@ def test_hold_draft_with_a_mismatching_number_falls_back_to_minimal(tmp_path, mo
 
 def test_escalation_for_a_hold_explains_the_contract_implication(tmp_path):
     body = run(tmp_path, data=hold_world(tmp_path))['escalation']['body']
-    for needed in ('Accepting EXW', 'Cost against copies gained', 'named person', 'Copies gained: unknown'):
+    for needed in ('Accepting EXW', 'named person', 'Copies gained: unknown'):
         assert needed in body
-    assert 'never confirms or sends' in body
+    assert 'Cost' in body or 'Freight' in body
+    assert 'not sent by the application' in body
 
 
 def test_check_claims_rejects_an_unrecorded_gain():

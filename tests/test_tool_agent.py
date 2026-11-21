@@ -69,9 +69,9 @@ DEMO = [
 
 # ---------------------------------------------------------------- registry and the ladder
 
-def test_registry_has_fourteen_tools_and_no_never_tool():
+def test_registry_has_fifteen_tools_and_no_never_tool():
     names = {s['name'] for s in tools.schemas()}
-    assert len(names) == 14 and not names & set(tools.NEVER)
+    assert len(names) == 15 and not names & set(tools.NEVER)
     for spec in tools.schemas():
         assert spec['strict'] and spec['parameters']['additionalProperties'] is False
         assert set(spec['parameters']['required']) == set(spec['parameters']['properties'])

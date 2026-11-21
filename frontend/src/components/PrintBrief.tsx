@@ -1,4 +1,5 @@
 import { approverLabel, briefGains, recOption } from '@/lib/derive';
+import { TransportPrint } from '@/components/Transport';
 import { cap, etaText, num } from '@/lib/format';
 import type { Detail } from '@/lib/types';
 
@@ -43,6 +44,7 @@ export function PrintBrief({ d }: { d: Detail }) {
           <ul className="list-disc pl-[5mm]">{b.verify_next!.map((r, i) => <li key={i}>{r}</li>)}</ul>
         </>
       ) : null}
+      <TransportPrint t={d.transport} />
       <h2 className="mt-[5mm] mb-[2mm] text-[13pt] font-semibold">Numbers</h2>
       <p>
         Needed {num(d.required) || 'unknown'}. In stock (estimate) {num(d.usable_stock) || 'unknown'}. Arriving before launch {num(d.incoming) || 'unknown'}. Missing {num(d.shortage) || 'unknown'}.

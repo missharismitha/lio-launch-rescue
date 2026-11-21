@@ -267,6 +267,21 @@ def t_price_option(board, args):
             'unknown': [str(u)[:160] for u in (item.get('unknown') or [])[:4]], 'assumptions': [str(a)[:160] for a in (item.get('assumptions') or [])[:3]]}
 
 
+def t_compare_transport(board, args):
+    """Read-only: the transport comparison (estimates) for the case, compact. No arguments, no free text."""
+    crew = _crew()
+    transport = crew.transport_for(board)
+    if not transport:
+        raise ToolReject('No transport comparison can be worked out on these records.')
+    lanes = []
+    for lane in transport['lanes'][:4]:
+        lanes.append({'supplier': public.safe_text(lane['supplier'], 60), 'fastest': lane['fastest'], 'cheapest_feasible': lane['cheapest_feasible'],
+                      'modes': [{'mode': m['mode'], 'feasible': m['feasible'], 'transit_days': m['transit_days'], 'hours_margin': m['hours_margin'],
+                                 'cost_base_eur': (m['cost_eur'] or {}).get('base'), 'rank': m['rank']} for m in lane['modes']]})
+    return {'estimate': True, 'deadline': transport.get('deadline'), 'lanes': lanes,
+            'note': 'Costs are market-rate estimates, not customer data; arrival is transit time plus handling, not a booking.'}
+
+
 def t_whatif(board, args):
     crew = _crew()
     result = crew.ships(board['issue'], board['products'], board.get('hours_left'), float(args['arrive_in_hours']), int(args['units']))
@@ -493,6 +508,8 @@ REGISTRY = {t.name: t for t in [
           'kind': {'type': 'string', 'enum': ['po', 'air_freight', 'terms_exception']}, 'category': {'type': ['string', 'null'], 'maxLength': 60}},
          'auto', t_check_policy),
     Tool('price_option', 'Priced fields of one option: goods, freight, total, approver, unknowns and copies gained. Computed by code.', _P['option'], 'auto', t_price_option),
+    Tool('compare_transport', 'Compare air, sea and road per supplier: arrival against the last packing moment and an ESTIMATED freight cost range. Read-only.',
+         {}, 'auto', t_compare_transport),
     Tool('whatif', 'How many copies of the short edition still ship if the given units arrive after the given packing hours.',
          {'arrive_in_hours': {'type': 'number', 'minimum': 0, 'maximum': 400}, 'units': {'type': 'integer', 'minimum': 0, 'maximum': 10000000}}, 'auto', t_whatif),
     Tool('propose_option', 'Add a recovery option. You give mode, quantity, arrival (ISO or null) and a known supplier (or null); code writes the wording and prices it.',
@@ -537,7 +554,7 @@ def _summary(name, args, result):
     templates = {'get_case': 'Read the case snapshot', 'search_documents': 'Searched the records', 'read_document': 'Read one record',
                  'list_supplier_holds': f"Found {len((result or {}).get('holds', []))} supplier hold(s)",
                  'find_conflicts': f"Found {(result or {}).get('count', 0)} conflicting record(s)", 'check_policy': 'Looked up the required approver',
-                 'price_option': 'Priced option ' + str(args.get('option_id')), 'whatif': 'Ran a what-if on arrival time',
+                 'price_option': 'Priced option ' + str(args.get('option_id')), 'compare_transport': 'Compared transport modes', 'whatif': 'Ran a what-if on arrival time',
                  'draft_supplier_message': 'Drafted a supplier message (' + str(args.get('purpose', '')).replace('_', ' ') + ')',
                  'draft_escalation': 'Drafted an escalation to the approver the policy requires',
                  'set_recommendation': 'Recommended option ' + str(args.get('option_id')), 'flag_unknown': 'Flagged an open question',
