@@ -1,0 +1,29 @@
+# Customer data and extracted documents stay local.
+/data/
+/.analysis/
+/soony-data.zip
+
+# Secrets and local settings
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+session.json
+credentials.json
+.private/
+.local/
+
+# Dependencies, caches, and build output
+node_modules/
+.next/
+dist/
+build/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
+Thumbs.db
+*.log
