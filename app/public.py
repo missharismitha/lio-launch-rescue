@@ -20,6 +20,9 @@ EVENT_TEXT = {
     'investigated': 'Agent finished',
     'delivery_unknown': 'Delivery not confirmed. Check sent mail.',
     'offer_reviewed': 'Offer reviewed', 'escalation_approved': 'Escalation approved',
+    'sending': 'Handed to the mail server',
+    'sent_manually': 'Sent by hand, delivery not confirmed',
+    'reply_received': 'Reply imported, needs review',
 }
 TOOL_NAMES = re.compile(r'^(?:read|grep|glob|read_document|search_documents|get_current_issue|opened|searched)\b', re.I)
 

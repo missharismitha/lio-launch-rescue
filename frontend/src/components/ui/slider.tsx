@@ -32,8 +32,8 @@ export function Slider({ id, value, min = 0, max = 72, onChange, label, valueTex
       onValueChange={(v) => onChange(v[0] ?? value)}
       onKeyDown={onKeyDown}
     >
-      <SliderPrimitive.Track className="relative h-[3px] grow rounded-full bg-line">
-        <SliderPrimitive.Range className="absolute h-full rounded-full bg-ink" />
+      <SliderPrimitive.Track className="relative h-1.5 grow rounded-full bg-brand-100">
+        <SliderPrimitive.Range className="absolute h-full rounded-full bg-brand" />
       </SliderPrimitive.Track>
       <SliderPrimitive.Thumb
         id={id}
@@ -41,7 +41,7 @@ export function Slider({ id, value, min = 0, max = 72, onChange, label, valueTex
         aria-label={label}
         aria-valuetext={valueText}
         aria-describedby={describedBy}
-        className="block size-5 rounded-full border-2 border-white bg-ink ring-1 ring-ink transition-transform duration-160 hover:scale-110"
+        className="block size-5 rounded-full border-2 border-white bg-brand shadow ring-1 ring-brand transition-transform duration-160 hover:scale-110"
       />
     </SliderPrimitive.Root>
   );

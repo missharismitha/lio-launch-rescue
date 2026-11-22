@@ -1,4 +1,4 @@
-import { RefreshCw } from 'lucide-react';
+import { CircleCheck, Clock, Inbox, MailWarning, RefreshCw, Sparkles, type LucideIcon } from 'lucide-react';
 import { m } from 'motion/react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,26 @@ import { MANUAL_NOTE, SENT_BY_HAND, approverName, cardLead, cardState, cardTitle
 import { num, timeOnly } from '@/lib/format';
 import type { Detail, Overview } from '@/lib/types';
 
-const H = 'm-0 text-[24px] leading-[30px] font-semibold tracking-[-0.01em] text-ink text-balance sm:text-[30px] sm:leading-[38px]';
+const H = 'm-0 text-[22px] leading-[28px] font-semibold tracking-[-0.01em] text-ink text-balance sm:text-[26px] sm:leading-[32px]';
+
+/* the action is the loudest thing on the card */
+const PRIMARY = 'min-h-12 w-full px-8 text-[16px] shadow-md sm:w-auto sm:justify-self-start';
+
+const TONE = {
+  brand: 'bg-brand-tint text-brand',
+  ok: 'bg-ok-tint text-ok',
+  warn: 'bg-warn-tint text-warn',
+} as const;
+
+/* icon + word for the state, always together */
+function StateChip({ tone, Icon, children }: { tone: keyof typeof TONE; Icon: LucideIcon; children: string }) {
+  return (
+    <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 text-[13px] leading-6 font-medium ${TONE[tone]}`}>
+      <Icon className="size-3.5" aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
 
 /* The single decision. One primary button that morphs with the case state. No optimistic UI. */
 export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
@@ -30,7 +49,7 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
   if (st.kind === 'offer' && d.offer) return <OfferCard of={d.offer} />;
 
   const shell = (key: string, children: ReactNode) => (
-    <Card data-testid="decision-card" data-demo="decision" data-state={key} aria-label="Your decision" className="border-t border-line pt-8">
+    <Card id="decision" data-testid="decision-card" data-demo="decision" data-state={key} aria-label="Your decision" className="scroll-mt-20 border-t-4 border-t-brand">
       <m.div key={key} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: [0.2, 0.7, 0.2, 1] }} className="grid gap-4">
         {children}
       </m.div>
@@ -38,7 +57,7 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
   );
 
   const primary = (label: string, onClick: () => void, opts?: { disabled?: boolean }) => (
-    <Button id="approve" data-testid="approve" onClick={onClick} disabled={opts?.disabled || running} className="w-full sm:w-auto sm:justify-self-start">
+    <Button id="approve" data-testid="approve" onClick={onClick} disabled={opts?.disabled || running} className={PRIMARY}>
       {running && !opts?.disabled ? (
         <>
           <RefreshCw className="spin size-4" aria-hidden="true" />
@@ -60,13 +79,26 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
 
   switch (st.kind) {
     case 'no_gap':
-      return shell('no_gap', <h2 className={H}>No missing quantity. Check this with Soony.</h2>);
+      return shell(
+        'no_gap',
+        <>
+          <StateChip tone="ok" Icon={CircleCheck}>Covered</StateChip>
+          <h2 className={H}>No missing quantity. Check this with Soony.</h2>
+        </>,
+      );
     case 'delivery_unknown':
-      return shell('delivery_unknown', <h2 className={H}>Delivery not confirmed. Check sent mail.</h2>);
+      return shell(
+        'delivery_unknown',
+        <>
+          <StateChip tone="warn" Icon={MailWarning}>Unconfirmed</StateChip>
+          <h2 className={H}>Delivery not confirmed. Check sent mail.</h2>
+        </>,
+      );
     case 'sent':
       return shell(
         'sent',
         <>
+          <StateChip tone="brand" Icon={Clock}>Waiting</StateChip>
           <h2 className={H}>{st.manual ? `${SENT_BY_HAND}. Waiting for ${supplier}.` : `Sent. Waiting for ${supplier}.`}</h2>
           <ImportReply id={launch.selected || ''} />
         </>,
@@ -75,8 +107,9 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
       return shell(
         'replied',
         <>
+          <StateChip tone="warn" Icon={Inbox}>Reply in</StateChip>
           <h2 className={H}>Reply received. Not confirmed yet.</h2>
-          <Button data-testid="review-reply" id="approve" className="w-full sm:w-auto sm:justify-self-start" onClick={() => ui.openSheet('offer', 'approve')}>
+          <Button data-testid="review-reply" id="approve" className={PRIMARY} onClick={() => ui.openSheet('offer', 'approve')}>
             Review reply
           </Button>
         </>,
@@ -85,8 +118,9 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
       return shell(
         'approved_manual',
         <>
+          <StateChip tone="ok" Icon={CircleCheck}>Approved</StateChip>
           <h2 className={H}>Approved. Nothing was sent.</h2>
-          <p className="m-0 max-w-[64ch] text-ink-2">{MANUAL_NOTE}</p>
+          <p className="m-0 rounded-control bg-brand-tint px-3 py-2 text-[15px] text-brand-deep">{MANUAL_NOTE}</p>
           <Label>Approved by {approverName(d)}.</Label>
           {!emailOn ? <ManualSend d={d} id={launch.selected || ''} /> : null}
         </>,
@@ -95,6 +129,7 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
       return shell(
         'approved_send',
         <>
+          <StateChip tone="ok" Icon={CircleCheck}>Approved</StateChip>
           <h2 className={H}>Approved. Nothing was sent.</h2>
           <Label>Approved by {approverName(d)}.</Label>
           {st.sendEnabled ? (
@@ -108,8 +143,9 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
       return shell(
         'approved_partial',
         <>
+          <StateChip tone="warn" Icon={Clock}>1 more approval</StateChip>
           <h2 className={H}>Approved by {approverName(d)}.</h2>
-          <p className="m-0 max-w-[64ch] text-ink-2">The message to {d.escalation?.to_role || 'the approver'} still needs your OK.</p>
+          <p className="m-0 text-ink-2">{d.escalation?.to_role || 'The approver'} message needs your OK.</p>
           {primary('Approve escalation…', () => void openApproval('escalation'))}
         </>,
       );
@@ -125,13 +161,13 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
   return shell(
     st.kind === 'run' ? `run-${st.label}` : 'approve',
     <>
-      <Label>Recommended first step</Label>
+      <StateChip tone="brand" Icon={Sparkles}>Recommended first step</StateChip>
       <h2 className={H}>{title}</h2>
-      {lead ? <p className="m-0 max-w-[64ch] text-ink-2">{lead}</p> : null}
+      {lead ? <p title={lead} className="m-0 line-clamp-2 max-w-[56ch] text-[15px] leading-6 text-ink-2">{lead}</p> : null}
       {lowConf ? <RiskNote>Low confidence: key facts are unconfirmed.</RiskNote> : null}
       {agentError ? (
         <RiskNote testId="error-note">
-          {d.brief ? `Model unavailable. Showing the ${timeOnly(agent.last_run) || 'latest'} result and the rule-based plan.` : 'The agent stopped. Try again.'}
+          {d.brief ? `Model unavailable. Showing the ${timeOnly(agent.last_run) || 'latest'} result.` : 'The agent stopped. Try again.'}
         </RiskNote>
       ) : null}
       {d.brief ? (
@@ -144,7 +180,7 @@ export function DecisionCard({ d, o }: { d: Detail; o: Overview }) {
       {st.kind === 'run'
         ? primary(st.label, () => void (st.label === 'Draft the request' ? launch.draftOnly() : launch.runAgent()))
         : primary('Approve…', () => void openApproval('supplier'))}
-      {st.kind === 'approve' ? <p className="m-0 text-[14px] leading-5 text-ink-3">Nothing is sent until you confirm the supplier email.</p> : null}
+      {st.kind === 'approve' ? <p className="m-0 text-[13px] leading-5 text-ink-3">Nothing is sent until you confirm.</p> : null}
     </>,
   );
 }

@@ -4,22 +4,41 @@
 @theme {
   --color-*: initial;
   --color-white: #ffffff;
-  --color-page: #ffffff;
+  /* surfaces and ink */
+  --color-page: #f5f7fb;
   --color-card: #ffffff;
-  --color-ink: #0f1115;
-  --color-ink-hover: #2a2d35;
-  --color-ink-2: #565b69;
-  --color-ink-3: #6b7080;
-  --color-line: #e6e7eb;
-  --color-line-2: #8a8f9e;
-  --color-ship: #9aa0ae;
+  --color-ink: #101828;
+  --color-ink-hover: #1d2939;
+  --color-ink-2: #475467;
+  --color-ink-3: #667085;
+  --color-line: #e4e7ec;
+  --color-line-2: #98a2b3;
+  --color-ship: #98a2b3;
+  /* Soony brand: blue and signal red (from the brief's logo and box art) */
+  --color-brand: #1f4fd8;
+  --color-brand-deep: #17389e;
+  --color-brand-navy: #0b1f5c;
+  --color-brand-100: #dce6ff;
+  --color-brand-tint: #eef3ff;
+  --color-accent: #d9381e;
+  --color-accent-tint: #fdece8;
+  /* status: always paired with an icon or a word, never colour alone */
   --color-risk: #b42318;
-  --color-risk-tint: #fbefee;
-  --color-ok: #17694a;
+  --color-risk-tint: #fef3f2;
+  --color-ok: #12805c;
+  --color-ok-tint: #e4f5ee;
+  --color-warn: #b54708;
+  --color-warn-tint: #fff4e5;
+  /* transport modes (validated colourblind-safe as a set); sea is also dashed, road dotted */
+  --color-air: #0891b2;
+  --color-sea: #2b4fd4;
+  --color-road: #c2410c;
 
   --font-sans: 'Segoe UI Variable Text', 'Segoe UI', system-ui, -apple-system, 'SF Pro Text', Roboto, sans-serif;
   --radius-control: 10px;
   --shadow-sheet: 0 12px 40px -8px rgba(15, 17, 21, 0.18);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.06), 0 8px 24px -12px rgba(16, 24, 40, 0.12);
+  --radius-card: 16px;
   --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
@@ -27,8 +46,8 @@
 :root {
   --background: var(--color-page);
   --foreground: var(--color-ink);
-  --primary: var(--color-ink);
-  --ring: var(--color-ink);
+  --primary: var(--color-brand);
+  --ring: var(--color-brand);
   --radius: 10px;
   color-scheme: light;
 }
@@ -36,6 +55,13 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+  }
+  /* last-resort safety net only: the root cause (implicit auto grid tracks) is fixed with grid-cols-1 + min-w-0 */
+  html {
+    overflow-x: hidden;
+  }
+  body {
+    overflow-x: clip; /* clip, not hidden: hidden on body would break the sticky header */
   }
   body {
     margin: 0;
@@ -60,8 +86,11 @@
     cursor: not-allowed;
   }
   :focus-visible {
-    outline: 2px solid var(--color-ink);
+    outline: 2px solid var(--color-brand);
     outline-offset: 2px;
+  }
+  .on-dark :focus-visible {
+    outline-color: #ffffff;
   }
   @media (min-width: 640px) {
     body {
@@ -84,6 +113,22 @@
   .hatch-risk {
     background-color: var(--color-risk);
     background-image: repeating-linear-gradient(135deg, transparent 0 3px, rgba(255, 255, 255, 0.35) 3px 4.5px);
+  }
+  .card {
+    background: var(--color-card);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+  }
+  .hero-bg {
+    background:
+      radial-gradient(900px 420px at 85% 0%, rgba(77, 124, 255, 0.35), transparent 60%),
+      linear-gradient(135deg, var(--color-brand-navy) 0%, var(--color-brand-deep) 55%, var(--color-brand) 100%);
+  }
+  .panel-navy {
+    background: linear-gradient(160deg, var(--color-brand-navy), var(--color-brand-deep));
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
   }
   .skeleton {
     background: var(--color-line);
@@ -142,6 +187,39 @@
     transform: rotate(360deg);
   }
 }
+@keyframes ring-draw {
+  from {
+    stroke-dashoffset: var(--ring-c);
+  }
+}
+@keyframes float-a {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-1.5deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1deg);
+  }
+}
+@keyframes float-b {
+  0%,
+  100% {
+    transform: translateY(-6px) rotate(1.5deg);
+  }
+  50% {
+    transform: translateY(2px) rotate(-1deg);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 @keyframes toast-in {
   from {
     opacity: 0;
@@ -171,14 +249,39 @@
 .spin {
   animation: spin 800ms linear infinite;
 }
+.ring-anim {
+  animation: ring-draw 1100ms var(--ease-out-soft) both;
+}
+.float-a {
+  animation: float-a 7s ease-in-out infinite;
+}
+.float-b {
+  animation: float-b 8s ease-in-out infinite;
+}
+.rise {
+  animation: rise 420ms var(--ease-out-soft) both;
+}
+.lift {
+  transition: transform 160ms var(--ease-out-soft), box-shadow 160ms var(--ease-out-soft);
+}
+.lift:hover {
+  transform: translateY(-2px);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .anim-sheet,
   .anim-fade,
   .anim-toast,
   .spin,
+  .ring-anim,
+  .float-a,
+  .float-b,
+  .rise,
   .skeleton {
     animation: none !important;
+  }
+  .lift:hover {
+    transform: none;
   }
   * {
     scroll-behavior: auto !important;

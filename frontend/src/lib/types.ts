@@ -226,6 +226,7 @@ export interface Overview {
   agent?: AgentInfo;
   integrations?: Integrations;
   sync?: { last_success?: string | null; error?: boolean | string | null };
+  map?: MapData;
 }
 
 export interface WhatIfResult {
@@ -233,4 +234,64 @@ export interface WhatIfResult {
   copies_short?: number;
   hours_left?: number;
   label?: string;
+}
+
+/* Transport map data: one public projection for the whole overview (see docs/UI_REDESIGN.md). Treat every field as optional. */
+export interface MapPoint {
+  name: string;
+  lat: number;
+  lon: number;
+}
+export interface MapSupplier extends MapPoint {
+  id: string;
+  country?: string;
+  category?: string;
+}
+export interface MapPort extends MapPoint {
+  code: string;
+  mode?: TransportModeName;
+}
+export interface MapRoute {
+  id: string;
+  mode: TransportModeName;
+  origin: string;
+  destination: string;
+  via?: string | null;
+  transit_days?: number;
+}
+export interface MapShipment {
+  id: string;
+  supplier_id?: string | null;
+  mode: TransportModeName;
+  status: string;
+  origin?: string;
+  destination?: string;
+  lat?: number | null;
+  lon?: number | null;
+  eta?: string | null;
+  etd?: string | null;
+  late?: boolean;
+  material?: string | null;
+}
+export interface MapData {
+  as_of?: string | null;
+  deadline?: string | null;
+  hub: MapPoint;
+  suppliers: MapSupplier[];
+  ports: MapPort[];
+  routes: MapRoute[];
+  shipments: MapShipment[];
+}
+
+/* Workflow tracker: public events (app/public.py public_events) and case delivery status. Appended by the workflow agent. */
+export interface PublicEvent {
+  at?: string | null;
+  kind?: string;
+  message?: string;
+}
+export interface Detail {
+  events?: PublicEvent[];
+}
+export interface CaseInfo {
+  delivery_status?: string | null;
 }

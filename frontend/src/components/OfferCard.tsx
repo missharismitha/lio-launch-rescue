@@ -1,3 +1,4 @@
+import { CircleCheck } from 'lucide-react';
 import { Badge, Unknown } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { ApproverBadge, Fact, Facts, Label, Money, RiskNote } from '@/components/common';
@@ -13,12 +14,12 @@ export function OfferFacts({ of }: { of: Offer }) {
       {of.arrives_before_deadline === false ? (
         <RiskNote>Arrives after the last packing hour</RiskNote>
       ) : of.gap_after_offer != null ? (
-        <p className="m-0 text-ink-2">Gap after offer: {num(of.gap_after_offer)}</p>
+        <p className="m-0 rounded-control bg-ok-tint px-3 py-2 text-ok">Gap after offer: {num(of.gap_after_offer)}</p>
       ) : null}
       <Facts>
         <Fact label="Cost">
           {of.cost_eur != null ? <Money v={of.cost_eur} /> : <Unknown />}
-          <small className="block text-[14px] text-ink-3">from the supplier reply, not confirmed</small>
+          <small className="block text-[13px] text-ink-3">from the supplier reply, not confirmed</small>
         </Fact>
         <Fact label="Approver">
           <ApproverBadge a={of.approver} />
@@ -30,8 +31,12 @@ export function OfferFacts({ of }: { of: Offer }) {
 
 export function OfferCard({ of }: { of: Offer }) {
   return (
-    <Card data-testid="decision-card" data-demo="offer" aria-label="Your decision" className="grid gap-4 border-t border-line pt-8">
-      <h2 className="m-0 text-[24px] leading-[30px] font-semibold tracking-[-0.01em] text-balance sm:text-[30px] sm:leading-[38px]">{offerTitle(of)}</h2>
+    <Card data-testid="decision-card" data-demo="offer" aria-label="Your decision" id="decision" className="grid gap-4 scroll-mt-20 border-t-4 border-t-brand">
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn-tint px-2.5 text-[13px] leading-6 font-medium text-warn">
+        <CircleCheck className="size-3.5" aria-hidden="true" />
+        Offer in, not ordered
+      </span>
+      <h2 className="m-0 text-[22px] leading-[28px] font-semibold tracking-[-0.01em] text-balance sm:text-[26px] sm:leading-[32px]">{offerTitle(of)}</h2>
       <OfferFacts of={of} />
       {of.simulated ? (
         <div>
@@ -49,7 +54,7 @@ export function OfferCard({ of }: { of: Offer }) {
 export function OfferDetails({ of }: { of: Offer }) {
   return (
     <div className="grid gap-3" data-testid="offer-details">
-      <p className="m-0 text-[17px] leading-6 font-semibold">
+      <p className="m-0 text-[17px] leading-6 font-semibold text-brand-navy">
         {num(of.quantity)} units arrive {of.arrival_label || 'at a time to be confirmed'}.
       </p>
       <OfferFacts of={of} />

@@ -1,6 +1,6 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { costText, marginText, TransportSection } from '@/components/Transport';
+import { costText, estLine, marginText, TransportSection, verdictText } from '@/components/Transport';
 import type { Transport, TransportMode } from '@/lib/types';
 
 afterEach(cleanup);
@@ -40,11 +40,13 @@ describe('Transport', () => {
   });
   it('formats cost range, labels estimate, shows badges and margin', () => {
     render(<TransportSection t={t([mode()])} />);
-    expect(screen.getByText(/about EUR.1,800 \(1,500 to 3,200\)/)).toBeTruthy();
-    expect(screen.getAllByText('Estimate:').length).toBe(1);
+    expect(costText(mode())).toMatch(/about EUR.1,800 \(1,500 to 3,200\)/);
+    expect(screen.getByText(/^est\. EUR.1,500 to 3,200$/)).toBeTruthy();
     expect(screen.getByText('Fastest')).toBeTruthy();
-    expect(screen.getByText('Cheapest that makes it')).toBeTruthy();
-    expect(screen.getByText(/makes it, 14.h to spare/)).toBeTruthy();
+    expect(screen.getByText('Cheapest')).toBeTruthy();
+    expect(screen.getByText('Makes it +14h')).toBeTruthy();
+    /* the arrival sentence moved to the tile title/aria-label */
+    expect(screen.getByTestId('transport-mode').getAttribute('title')).toMatch(/arrives .*makes it, 14.h to spare/);
     expect(screen.queryByTestId('transport-none')).toBeNull();
   });
   it('negative margin reads as late; no-feasible lane says so', () => {
@@ -52,9 +54,24 @@ describe('Transport', () => {
     expect(marginText(m)).toMatch(/3 days late/);
     expect(marginText(mode({ feasible: false, hours_margin: -5 }))).toMatch(/5.h late/);
     render(<TransportSection t={t([m])} />);
-    expect(screen.getByTestId('transport-none').textContent).toMatch(/No transport mode arrives before Sunday 20:00\. Fastest: air, 3 days late/);
-    expect(screen.queryByText('Cheapest that makes it')).toBeNull();
-    expect(screen.getByText('Too slow')).toBeTruthy();
+    expect(screen.getByTestId('transport-none').textContent).toBe('No mode makes Sunday 20:00');
+    expect(screen.queryByText('Cheapest')).toBeNull();
+    expect(screen.getByTestId('transport-mode').getAttribute('title')).toMatch(/Too slow/);
+  });
+  it('states lateness once per lane, no duplicate sentence', () => {
+    const m = mode({ feasible: false, hours_margin: -90, verdict: 'Too slow' });
+    render(<TransportSection t={t([m])} />);
+    const lane = screen.getByTestId('transport-lane');
+    expect(within(lane).getAllByText('Late 4d').length).toBe(1);
+    expect(lane.textContent).not.toMatch(/Too late|days late|too late by/i);
+    expect(lane.textContent).not.toMatch(/arrives/);
+  });
+  it('verdict and est. line helpers', () => {
+    expect(verdictText(mode({ hours_margin: 5 }))).toBe('Makes it +5h');
+    expect(verdictText(mode({ feasible: false, hours_margin: -5 }))).toBe('Late 5h');
+    expect(verdictText(mode({ feasible: false, hours_margin: null }))).toBe('Late');
+    expect(estLine(mode({ cost_eur: null }))).toBe('');
+    expect(estLine(mode({ cost_eur: { low: 900, base: 900, high: 900 } }))).toMatch(/^est\. EUR.900$/);
   });
   it('shows assumptions with kind labels and the confirm line', () => {
     render(<TransportSection t={t([mode()])} />);

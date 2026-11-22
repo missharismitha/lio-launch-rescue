@@ -59,6 +59,9 @@ export const useLaunch = (): Launch => {
 };
 
 const POLL_MS = 3000;
+/* faster polling only while the agent is running (overview.agent.running); back to POLL_MS after */
+export const FAST_POLL_MS = 1000;
+export const pollDelay = (o: Overview | null | undefined): number => (o?.agent?.running ? FAST_POLL_MS : POLL_MS);
 
 export function LaunchProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
@@ -69,6 +72,8 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
   const ctl = useRef<AbortController | null>(null);
   const lastJson = useRef('');
   const selectedRef = useRef<string | null>(null);
+  const runningRef = useRef(false);
+  const wake = useRef<() => void>(() => {});
 
   const load = useCallback(async (force: boolean) => {
     const req = ++counter.current;
@@ -84,6 +89,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
       const detail = sel ? await api<Detail>(`/api/issues/${encodeURIComponent(sel)}`, undefined, c.signal) : null;
       if (req !== counter.current) return;
       selectedRef.current = sel;
+      runningRef.current = !!overview.agent?.running;
       const json = JSON.stringify([overview, detail, sel]);
       if (!force && json === lastJson.current && stateRef.current.status === 'ready') return;
       lastJson.current = json;
@@ -100,7 +106,13 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
     const cycle = async () => {
       if (!alive) return;
       if (!document.hidden && !busyRef.current) await load(false);
-      if (alive) timer = window.setTimeout(cycle, POLL_MS);
+      if (alive) timer = window.setTimeout(cycle, runningRef.current ? FAST_POLL_MS : POLL_MS);
+    };
+    /* after an action: if the agent just started, drop the pending slow timer and poll fast now */
+    wake.current = () => {
+      if (!alive || !runningRef.current) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(cycle, FAST_POLL_MS);
     };
     void cycle();
     return () => {
@@ -140,6 +152,7 @@ export function LaunchProvider({ children }: { children: ReactNode }) {
       busyRef.current = false;
       dispatch({ type: 'busy', busy: false });
       await load(true);
+      wake.current();
       return ok;
     },
     [load],

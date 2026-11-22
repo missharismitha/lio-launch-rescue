@@ -33,8 +33,8 @@ def test_fresh_host_syncs_before_first_wait(monkeypatch, tmp_path):
     assert run_one_cycle(monkeypatch, tmp_path, data_exists=False, token='t') == [('refresh', True), 'sleep']
 
 
-def test_existing_data_waits_first(monkeypatch, tmp_path):
-    assert run_one_cycle(monkeypatch, tmp_path, data_exists=True, token='t') == ['sleep']
+def test_existing_data_with_a_token_also_checks_the_portal_at_startup(monkeypatch, tmp_path):
+    assert run_one_cycle(monkeypatch, tmp_path, data_exists=True, token='t') == [('refresh', True), 'sleep']
 
 
 def test_no_token_waits_first(monkeypatch, tmp_path):

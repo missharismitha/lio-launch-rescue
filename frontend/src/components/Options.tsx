@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CircleCheck, PauseCircle } from 'lucide-react';
 import { useState } from 'react';
 import { Unknown } from '@/components/ui/badge';
 import { ApproverBadge, Money } from '@/components/common';
@@ -26,7 +26,12 @@ export function OptionRow({ x, d, open: openInit = false }: { x: Option; d: Deta
       <button type="button" aria-expanded={open} onClick={() => setOpen((v) => !v)} className="flex min-h-12 w-full items-center gap-3 py-2 text-left">
         <ChevronRight className={cn('size-4 shrink-0 text-ink-3 transition-transform duration-200', open && 'rotate-90')} aria-hidden="true" />
         <span className="min-w-0 flex-1 truncate font-medium">{x.title || 'Option'}</span>
-        {rec ? <span className="text-[14px] text-ok">recommended</span> : null}
+        {rec ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-ok-tint px-2 text-[13px] text-ok">
+            <CircleCheck className="size-3.5" aria-hidden="true" />
+            recommended
+          </span>
+        ) : null}
         <span className="shrink-0 text-[14px]">{x.price_eur != null ? <Money v={x.price_eur} /> : <Unknown />}</span>
       </button>
       {open ? (
@@ -37,7 +42,7 @@ export function OptionRow({ x, d, open: openInit = false }: { x: Option; d: Deta
             {x.eta ? <b className="num font-semibold">{etaText(x.eta)}</b> : <Unknown />}
             <span className="text-ink-2">Approver</span>
             <ApproverBadge a={x.approver} />
-            <span className={f.risk ? 'text-risk' : 'text-ink-2'}>{f.text}</span>
+            <span className={f.risk ? 'font-medium text-risk' : 'text-ink-2'}>{f.text}</span>
           </p>
           {gains != null ? (
             <p className="m-0">
@@ -65,13 +70,13 @@ export function OptionList({ d, expanded = false }: { d: Detail; expanded?: bool
   );
   if (expanded) return <div data-demo="options-sheet">{body}</div>;
   return (
-    <div data-demo="options" className="border-t border-line pt-4">
+    <div data-demo="options" className="card px-5 py-2">
       <button
         type="button"
         data-testid="options-toggle"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="flex min-h-11 w-full items-center justify-between text-left font-medium"
+        className="flex min-h-11 w-full items-center justify-between text-left font-semibold text-brand-navy"
       >
         Other options ({rest.length})
         <ChevronRight className={cn('size-4 text-ink-3 transition-transform duration-200', open && 'rotate-90')} aria-hidden="true" />
@@ -85,13 +90,14 @@ export function HoldNote({ d }: { d: Detail }) {
   const hs = (d.holds || []).filter((x) => x && (x.supplier || x.quantity != null));
   if (!hs.length) return null;
   return (
-    <div data-demo="hold" className="grid">
+    <div data-demo="hold" className="grid gap-3">
       {hs.map((x, i) => (
-        <section key={i} data-testid="hold" className="grid gap-2 border-t border-line py-6 first:pt-8">
-          <h3 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em]">
+        <section key={i} data-testid="hold" className="grid gap-2 rounded-card border border-warn/25 bg-warn-tint p-5 text-ink">
+          <h3 className="m-0 flex items-center gap-2 text-[17px] leading-6 font-semibold tracking-[-0.01em] text-warn">
+            <PauseCircle className="size-5 shrink-0" aria-hidden="true" />
             {x.supplier || 'A supplier'} is holding {x.quantity != null ? `${num(x.quantity)} units` : 'units'}.
           </h3>
-          <p className="m-0 max-w-[64ch] text-ink-2">{x.required_action || 'Packed on hold until Soony confirms delivery terms.'}</p>
+          <p className="m-0 max-w-[64ch] text-ink">{x.required_action || 'Packed on hold until Soony confirms delivery terms.'}</p>
           {x.consequence ? <p className="m-0 max-w-[64ch] text-[14px] leading-5 text-ink-2">{x.consequence}</p> : null}
           <p className="m-0 flex flex-wrap items-baseline gap-x-3 text-[14px]">
             {x.who_can_unlock?.role ? (

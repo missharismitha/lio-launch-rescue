@@ -90,7 +90,7 @@ export function ManualSend({ d, id }: { d: Detail; id: string }) {
   }
 
   return (
-    <div role="group" aria-label="Send it yourself" data-testid="handoff" className="grid gap-3 border-t-2 border-ink pt-4">
+    <div role="group" aria-label="Send it yourself" data-testid="handoff" className="grid gap-3 rounded-card border border-brand-100 bg-brand-tint p-4">
       <p className="m-0 max-w-[64ch] text-ink-2">
         Send it from the registered sender address. Keep the subject exactly as it is, including the [Lio ...] tag, or the reply cannot be matched.
       </p>
@@ -122,7 +122,7 @@ export function ManualSend({ d, id }: { d: Detail; id: string }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void mark();
               }}
-              className="min-h-11 rounded-control border border-line-2 bg-white px-3"
+              className="min-h-11 rounded-control border border-line-2 bg-white px-3 focus:border-brand"
             />
           </div>
           <div className="flex flex-wrap gap-2">

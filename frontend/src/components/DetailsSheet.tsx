@@ -1,4 +1,4 @@
-import { Printer, RefreshCw, LogOut, Sparkles, Check } from 'lucide-react';
+import { Printer, RefreshCw, LogOut, Sparkles, Check, TriangleAlert } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Badge, Dot, Unknown } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import type { Detail, Overview } from '@/lib/types';
 
 function MailBox({ subject, body, testId }: { subject?: string; body?: string; testId: string }) {
   return (
-    <div data-testid={testId} className="overflow-hidden rounded-control border border-line bg-white">
+    <div data-testid={testId} className="overflow-hidden rounded-card border border-line bg-white">
       <p className="m-0 border-b border-line px-3 py-2 text-[14px]">
         <b>Subject: </b>
         {subject || ''}
@@ -111,7 +111,7 @@ function NumbersTab({ d, o }: { d: Detail; o: Overview }) {
         {ok ? (
           <Badge tone="ok"><Check className="size-3.5" aria-hidden="true" />Numbers verified</Badge>
         ) : (
-          <Badge tone="warn"><Dot />Numbers not verified</Badge>
+          <Badge tone="warn"><TriangleAlert className="size-3.5" aria-hidden="true" />Numbers not verified</Badge>
         )}
       </div>
       <Facts>
@@ -125,7 +125,7 @@ function NumbersTab({ d, o }: { d: Detail; o: Overview }) {
         <>
           <h4 className="m-0 text-[14px] font-semibold text-ink-2">Records that disagree</h4>
           {d.conflicts!.map((x, i) => (
-            <div key={i} className="grid gap-0.5 border-l-2 border-line pl-3">
+            <div key={i} className="grid gap-0.5 border-l-2 border-warn pl-3">
               <b>{x.field || 'Record'}</b>
               <span>{x.why || ''}</span>
               {x.confidence ? <span className="text-[14px] text-ink-2">{cap(x.confidence)} confidence</span> : null}
@@ -229,7 +229,7 @@ function ReviewForm({ d }: { d: Detail }) {
   const [note, setNote] = useState('');
   const arrivalDate = arrival ? new Date(arrival) : null;
   const valid = !!reply && qty !== '' && Number(qty) >= 0 && !!arrivalDate && !Number.isNaN(arrivalDate.getTime()) && cost !== '' && Number(cost) >= 0 && who.trim().length >= 2 && note.trim().length >= 5;
-  const field = 'min-h-11 rounded-control border border-line-2 bg-white px-3';
+  const field = 'min-h-11 rounded-control border border-line-2 bg-white px-3 focus:border-brand';
   const L = ({ id, children }: { id: string; children: ReactNode }) => <label htmlFor={id} className="text-[14px] font-semibold">{children}</label>;
   return (
     <SheetSection title="Review the supplier reply" testId="review-form">
@@ -277,7 +277,7 @@ function HealthTab({ o }: { o: Overview }) {
   return (
     <>
       <SheetSection title="Cases">
-        <div className="grid gap-2">
+        <div className="grid gap-1">
           {(o.issues || []).map((i) => (
             <button
               key={i.id}
@@ -287,7 +287,7 @@ function HealthTab({ o }: { o: Overview }) {
                 ui.closeSheet();
                 launch.selectCase(i.id);
               }}
-              className="flex min-h-11 items-center justify-between gap-2 border-b border-line text-left aria-[current=true]:font-semibold"
+              className="flex min-h-11 items-center justify-between gap-2 rounded-control px-2 text-left hover:bg-brand-tint aria-[current=true]:bg-brand-tint aria-[current=true]:font-semibold"
             >
               <span>{(i.title || 'Case').split(':')[0]}</span>
               {(i.shortage ?? 0) > 0 ? <Badge tone="risk"><Dot />{num(i.shortage)} short</Badge> : <Badge>Check</Badge>}

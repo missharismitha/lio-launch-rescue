@@ -1,3 +1,4 @@
+import { OctagonAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Unknown } from '@/components/ui/badge';
 import { cn } from '@/lib/cn';
@@ -9,7 +10,7 @@ import type { Approver } from '@/lib/types';
 export function ApproverBadge({ a }: { a?: Approver | null }) {
   if (!a || !a.role) return <Unknown />;
   return (
-    <span className="text-ink" title={a.provisional ? 'Cost is unknown, so this is the lowest approver that could apply.' : undefined}>
+    <span className="font-medium text-ink" title={a.provisional ? 'Cost is unknown, so this is the lowest approver that could apply.' : undefined}>
       {approverLabel(a)}
     </span>
   );
@@ -33,8 +34,8 @@ export function Fact({ label, children }: { label: string; children: ReactNode }
 /* sections are separated by a hairline and space, never boxed */
 export function SheetSection({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
   return (
-    <section data-testid={testId} className="grid gap-3 border-t border-line pt-6 first:border-t-0 first:pt-0">
-      <h3 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em]">{title}</h3>
+    <section data-testid={testId} className="card grid gap-3 p-4">
+      <h3 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em] text-brand-navy">{title}</h3>
       {children}
     </section>
   );
@@ -45,9 +46,10 @@ export const Label = ({ children, className }: { children: ReactNode; className?
   <p className={cn('m-0 text-[14px] leading-5 text-ink-2', className)}>{children}</p>
 );
 
-/* 2 px risk rule: the one place status colour is a line */
+/* tinted risk panel: icon plus words */
 export const RiskNote = ({ children, testId }: { children: ReactNode; testId?: string }) => (
-  <p data-testid={testId} role={testId ? 'status' : undefined} className="m-0 border-l-2 border-risk pl-3 text-ink-2">
-    {children}
+  <p data-testid={testId} role={testId ? 'status' : undefined} className="m-0 flex items-start gap-2 rounded-control bg-risk-tint px-3 py-2 text-[15px] leading-6 text-risk">
+    <OctagonAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+    <span>{children}</span>
   </p>
 );

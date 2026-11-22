@@ -24,7 +24,7 @@ from app.sync import PortalSync, safe_path, now
 from app import investigator, crew, actions, agent_loop
 from app.mailbox import Inbox
 from app.recovery import scenario, aware
-from app import access, labels, public
+from app import access, labels, public, mapdata
 
 lock = threading.RLock()
 store = Store(config.STATE_DIR / 'cases.sqlite3')
@@ -83,8 +83,9 @@ def issue_detail(issue_id):
 
 
 async def poll():
-    # A fresh host (e.g. ephemeral disk after a restart) has no data yet: sync at once instead of after one interval.
-    wait = config.DATA_DIR.is_dir() or not config.PORTAL_TOKEN
+    # With a portal token, check the portal at once at startup (fresh hosts have no data yet, and the screen shows
+    # 'data stale' until a sync succeeds); without one there is nothing to check, so wait.
+    wait = not config.PORTAL_TOKEN
     while True:
         if wait:
             await asyncio.sleep(config.POLL_SECONDS)
@@ -193,20 +194,28 @@ def health():
     return {'status': 'ok', 'data_present': config.DATA_DIR.is_dir()}
 
 
+def _public_overview(raw):
+    result = public.public_overview(raw)
+    data = mapdata.cached(config.DATA_DIR, (raw or {}).get('launch_date'))
+    if data:
+        result['map'] = data
+    return result
+
+
 @app.get('/api/overview')
 def get_overview():
     with lock:
-        return public.public_overview(overview())
+        return _public_overview(overview())
 
 
 @app.post('/api/refresh')
 def local_refresh():
-    return public.public_overview(refresh())
+    return _public_overview(refresh())
 
 
 @app.post('/api/sync')
 def portal_refresh():
-    return public.public_overview(refresh(sync=True))
+    return _public_overview(refresh(sync=True))
 
 
 @app.get('/api/issues/{issue_id}')

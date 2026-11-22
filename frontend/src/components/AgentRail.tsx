@@ -30,7 +30,11 @@ interface Row {
   rule: boolean;
   approval: boolean;
   rejected: boolean;
+  skipped?: boolean;
+  autonomy?: string;
 }
+
+export type { Row as RailRow };
 
 export function timelineRows(rows: TraceRow[]): Row[] {
   const out: Row[] = [];
@@ -39,12 +43,13 @@ export function timelineRows(rows: TraceRow[]): Row[] {
     const rule = r.by === 'rule';
     const approval = r.autonomy === 'approval';
     const rejected = /reject/i.test(r.outcome || '');
+    const skipped = r.outcome === 'skipped';
     const text = r.summary || r.action || r.outcome || '';
     const last = out[out.length - 1];
-    if (last && last.label === label && last.rule === rule && last.approval === approval && last.rejected === rejected) {
+    if (last && last.label === label && last.rule === rule && last.approval === approval && last.rejected === rejected && !!last.skipped === skipped) {
       last.n += 1;
       if (text && !last.summaries.includes(text)) last.summaries.push(text);
-    } else out.push({ label, n: 1, summaries: text ? [text] : [], rule, approval, rejected });
+    } else out.push({ label, n: 1, summaries: text ? [text] : [], rule, approval, rejected, skipped, autonomy: r.autonomy });
   }
   return out;
 }
@@ -79,13 +84,13 @@ function items(rows: Row[]): ListItem[] {
           aria-hidden="true"
           className={
             'absolute top-[7px] -left-[4px] size-[7px] rounded-full ' +
-            (r.rejected ? 'bg-risk' : r.rule ? 'border border-ink-3 bg-white' : 'bg-ink')
+            (r.rejected ? 'bg-risk' : r.approval ? 'bg-warn' : r.skipped ? 'border border-line-2 bg-white' : r.rule ? 'border border-brand bg-white' : 'bg-brand')
           }
         />
         <p className="m-0 text-[15px] leading-6 text-ink">
           {groupLabel(r.label, r.n)}
           {r.rule ? <span className="ml-2 text-[14px] text-ink-2">rule-based</span> : null}
-          {r.approval ? <span className="ml-2 text-[14px] text-ink-2">needs your approval</span> : null}
+          {r.approval ? <span className="ml-2 text-[14px] font-medium text-warn">needs your approval</span> : null}
         </p>
         {r.summaries.length ? <p className="m-0 truncate text-[14px] leading-5 text-ink-2">{r.summaries.join('; ')}</p> : null}
       </>
@@ -93,10 +98,9 @@ function items(rows: Row[]): ListItem[] {
   }));
 }
 
-export function AgentRail({ d, o, legend = false }: { d: Detail; o: Overview; legend?: boolean }) {
-  const { busy } = useLaunch();
-  const agent = o.agent || {};
-  const rows = hasToolRows(d)
+/* One row mapping for the rail and the live panel: tool rows when present, else the crew grouping */
+export function railRows(d: Detail): Row[] {
+  return hasToolRows(d)
     ? timelineRows(d.trace || [])
     : agentGroups(d).map((g) => ({
         label: g.agent,
@@ -105,7 +109,15 @@ export function AgentRail({ d, o, legend = false }: { d: Detail; o: Overview; le
         rule: false,
         approval: g.main.autonomy === 'approval',
         rejected: false,
+        skipped: g.main.outcome === 'skipped',
+        autonomy: g.main.autonomy,
       }));
+}
+
+export function AgentRail({ d, o, legend = false }: { d: Detail; o: Overview; legend?: boolean }) {
+  const { busy } = useLaunch();
+  const agent = o.agent || {};
+  const rows = railRows(d);
   const mode = runModeLine(d);
   const live = agent.running || busy;
   return (

@@ -4,13 +4,16 @@ import { DecisionCard } from '@/components/DecisionCard';
 import { DemoOverlay, useDemoShortcut } from '@/components/Demo';
 import { DetailsSheet } from '@/components/DetailsSheet';
 import { Header } from '@/components/Header';
-import { AgentRail } from '@/components/AgentRail';
+import { AgentLive } from '@/components/AgentLive';
+import { Hero } from '@/components/Hero';
+import { BomSection, Parts } from '@/components/Parts';
+import { TransportMap } from '@/components/TransportMap';
+import { WorkflowTracker } from '@/components/WorkflowTracker';
 import { HoldNote, OptionList } from '@/components/Options';
 import { TransportSection } from '@/components/Transport';
 import { PackingCard } from '@/components/Packing';
 import { PrintBrief } from '@/components/PrintBrief';
 import { EmptyState, ErrorState, Skeleton } from '@/components/States';
-import { Card } from '@/components/ui/card';
 import { Toaster } from '@/components/ui/toaster';
 import { LaunchProvider, useLaunch } from '@/hooks/useLaunch';
 import { UiProvider, useUi } from '@/hooks/useUi';
@@ -19,24 +22,28 @@ import type { Detail, Overview } from '@/lib/types';
 
 function Dashboard({ d, o }: { d: Detail; o: Overview }) {
   const ui = useUi();
-  const hasAgentRows = (d.trace || []).length > 0;
+  const launch = useLaunch();
   return (
     <>
       <Header d={d} o={o} />
-      <main id="main" className="mx-auto grid max-w-[1120px] gap-8 px-4 pb-16 sm:px-8 sm:pb-24 lg:grid-cols-12 lg:gap-x-16 print:hidden">
-        <div className="grid grid-cols-1 content-start gap-8 sm:gap-14 lg:col-span-7">
-          <DecisionCard d={d} o={o} />
-          <PackingCard d={d} o={o} />
-          <OptionList d={d} />
-          <TransportSection t={d.transport} />
+      <Hero d={d} o={o} />
+      <main id="main" className="mx-auto grid w-full min-w-0 max-w-[1200px] grid-cols-1 gap-8 px-4 py-8 sm:gap-10 sm:px-8 sm:py-12 print:hidden">
+        <AgentLive d={d} o={o} />
+        <WorkflowTracker d={d} o={o} />
+        <div className="grid min-w-0 grid-cols-1 items-start gap-8 lg:grid-cols-12">
+          <div className="grid min-w-0 grid-cols-1 content-start gap-6 lg:col-span-7">
+            <DecisionCard d={d} o={o} />
+            <HoldNote d={d} />
+            <OptionList d={d} />
+            <PackingCard d={d} o={o} />
+          </div>
+          <div className="grid min-w-0 grid-cols-1 content-start gap-6 lg:col-span-5">
+            <Parts o={o} selected={launch.selected} onSelect={launch.selectCase} />
+          </div>
         </div>
-        <div className="grid grid-cols-1 content-start gap-8 sm:gap-14 lg:col-span-5">
-          <Card className="hidden grid-cols-1 gap-4 border-t border-line pt-8 lg:grid" aria-label="What the agent did">
-            <h2 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em]">What the agent did</h2>
-            {hasAgentRows || o.agent?.running ? <AgentRail d={d} o={o} /> : <p className="m-0 text-ink-2">The agent has not run yet.</p>}
-          </Card>
-          <HoldNote d={d} />
-        </div>
+        <BomSection o={o} selected={launch.selected} onSelect={launch.selectCase} />
+        <TransportMap map={o.map} transport={d.transport ?? undefined} />
+        <TransportSection t={d.transport} />
       </main>
       <DetailsSheet d={d} o={o} onStartDemo={() => { ui.closeSheet(); ui.setDemoOpen(true); }} />
       <DemoOverlay d={d} o={o} />
@@ -60,7 +67,7 @@ function Shell() {
     return (
       <>
         <Header d={null} o={overview} />
-        <main id="main" className="mx-auto max-w-[1120px] px-4 py-6 sm:px-8">
+        <main id="main" className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-6 sm:px-8">
           <EmptyState />
         </main>
       </>

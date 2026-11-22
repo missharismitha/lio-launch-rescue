@@ -1,4 +1,7 @@
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, CircleCheck, CircleX } from 'lucide-react';
+import { ModeChip } from '@/components/map/ModeChip';
+import { PartImage } from '@/components/PartImage';
+import { partFor } from '@/lib/parts';
 import { eur, NB, num } from '@/lib/format';
 import type { Transport, TransportLane, TransportMode } from '@/lib/types';
 
@@ -47,66 +50,85 @@ function fastestMode(l: TransportLane): TransportMode | undefined {
   return ms.find((m) => m.mode === l.fastest) || [...ms].filter((m) => typeof m.transit_days === 'number').sort((a, b) => a.transit_days! - b.transit_days!)[0];
 }
 
+/* ONE short red line when no mode makes the deadline: "No mode makes Sunday 20:00" */
 function laneHeadline(l: TransportLane, t: Transport): string | null {
   const ms = l.modes || [];
   if (!ms.length || ms.some((m) => m.feasible)) return null;
   const dl = deadlineText(t.deadline);
-  const f = fastestMode(l);
-  const h = f?.hours_margin;
-  const late = typeof h === 'number' && h < 0 ? `, ${span(h)} late` : '';
-  return `No transport mode arrives${dl ? ` before ${dl}` : ' in time'}.${f?.mode ? ` Fastest: ${f.mode}${late}.` : ''}`;
+  return dl ? `No mode makes ${dl}` : 'No mode makes it';
 }
 
-const tag = 'rounded-md border border-line-2 px-2 text-ink-2';
+const chip = 'rounded-full border border-brand/30 bg-brand-tint px-2 py-0.5 text-[12px] leading-4 font-semibold text-brand-deep';
 
-function ModeRow({ m, l }: { m: TransportMode; l: TransportLane }) {
+/* "+14h" / "+3d" (no sign for late: the word carries it) */
+const short = (h: number): string => {
+  const a = Math.abs(h);
+  return a >= 48 ? `${Math.round(a / 24)}d` : `${Math.max(1, Math.round(a))}h`;
+};
+export function verdictText(m: TransportMode): string {
+  const h = m.hours_margin;
+  const known = typeof h === 'number' && Number.isFinite(h);
+  if (m.feasible) return known ? `Makes it +${short(h)}` : 'Makes it';
+  return known && h < 0 ? `Late ${short(h)}` : 'Late';
+}
+
+/* "est. EUR 1,500 to 3,200" on one line */
+export function estLine(m: TransportMode): string {
+  const c = m.cost_eur;
+  if (!c) return '';
+  const lo = typeof c.low === 'number' ? c.low : null;
+  const hi = typeof c.high === 'number' ? c.high : null;
+  if (lo != null && hi != null && num(lo) !== num(hi)) return `est. ${eur(lo)} to ${num(hi)}`;
+  const v = typeof c.base === 'number' ? c.base : (lo ?? hi);
+  return typeof v === 'number' ? `est. ${eur(v)}` : '';
+}
+
+function ModeTile({ m, l }: { m: TransportMode; l: TransportLane }) {
   const fastest = !!m.mode && m.mode === l.fastest;
   const cheapest = !!m.mode && m.mode === l.cheapest_feasible && !!m.feasible;
-  const cost = costText(m);
+  const est = estLine(m);
   const perUnit = typeof m.cost_per_unit_eur === 'number' ? new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(m.cost_per_unit_eur) : '';
+  const full = [cap(m.mode), m.route, marginText(m), est, perUnit ? `about EUR${NB}${perUnit} per unit` : '', !m.feasible ? m.verdict : ''].filter(Boolean).join('. ');
   return (
-    <li data-testid="transport-mode" data-feasible={m.feasible ? 'yes' : 'no'} className={`grid gap-1 border-t border-line py-3 text-[14px] leading-5 first:border-t-0 sm:grid-cols-[6rem_1fr] sm:gap-x-4 ${m.feasible ? '' : 'text-ink-2'}`}>
-      <b className={m.feasible ? 'font-semibold text-ink' : 'font-medium'}>{cap(m.mode) || 'Mode'}</b>
-      <div className="grid gap-1">
-        {fastest || cheapest ? (
-          <p className="m-0 flex flex-wrap gap-2">
-            {fastest ? <span className={tag}>Fastest</span> : null}
-            {cheapest ? <span className={tag}>Cheapest that makes it</span> : null}
-          </p>
-        ) : null}
-        {m.route ? <p className="m-0 text-ink-2">{m.route}</p> : null}
-        <p className={`m-0 ${m.feasible ? 'text-ink' : 'text-ink-2'}`}>{marginText(m)}</p>
-        {cost ? (
-          <p className="m-0">
-            <span className="text-ink-3">Estimate:</span> {cost}
-            {perUnit ? <span className="text-ink-3">{`, about EUR${NB}${perUnit} per unit`}</span> : null}
-          </p>
-        ) : (
-          <p className="m-0 text-ink-3">Cost estimate not available</p>
-        )}
-        {!m.feasible && m.verdict ? <p className="m-0 text-ink-2">{m.verdict}</p> : null}
-      </div>
+    <li data-testid="transport-mode" data-feasible={m.feasible ? 'yes' : 'no'} title={full} aria-label={full} className={`grid content-start gap-1.5 rounded-xl border p-3 text-[13px] leading-5 ${m.feasible ? 'border-ok/30 bg-ok-tint/40' : 'border-line bg-page/60'}`}>
+      <ModeChip mode={m.mode} />
+      <p className={`m-0 flex items-center gap-1.5 text-[18px] leading-6 font-bold ${m.feasible ? 'text-ok' : 'text-risk'}`}>
+        {m.feasible ? <CircleCheck className="size-4 shrink-0" aria-hidden="true" /> : <CircleX className="size-4 shrink-0" aria-hidden="true" />}
+        <span>{verdictText(m)}</span>
+      </p>
+      <p className={`m-0 whitespace-nowrap ${est ? 'font-medium text-ink' : 'text-ink-3'}`}>{est || 'est. unknown'}</p>
+      {fastest || cheapest ? (
+        <p className="m-0 flex flex-wrap gap-1.5">
+          {fastest ? <span className={chip}>Fastest</span> : null}
+          {cheapest ? <span className={chip}>Cheapest</span> : null}
+        </p>
+      ) : null}
     </li>
   );
 }
 
 function Lane({ l, t }: { l: TransportLane; t: Transport }) {
   const head = laneHeadline(l, t);
-  const meta = [l.country, l.quantity != null ? `${num(l.quantity)} units` : '', l.material].filter(Boolean).join(', ');
+  const meta = [l.country, l.quantity != null ? `${num(l.quantity)} units` : ''].filter(Boolean).join(', ');
+  const modes = l.modes || [];
   return (
-    <section data-testid="transport-lane" className="grid gap-1 border-t border-line pt-4 first:border-t-0 first:pt-0">
-      <h3 className="m-0 text-[15px] leading-6 font-semibold">
-        {l.supplier || 'Supplier'}
-        {meta ? <span className="font-normal text-ink-2">{`, ${meta}`}</span> : null}
-      </h3>
+    <section data-testid="transport-lane" className="grid gap-3 rounded-2xl border border-line bg-white p-3 sm:p-4">
+      <div className="flex items-center gap-3">
+        {l.material ? <PartImage part={partFor(l.material)} size={44} /> : null}
+        <div className="grid min-w-0">
+          <h3 className="m-0 truncate text-[15px] leading-6 font-semibold">{l.supplier || 'Supplier'}</h3>
+          {meta ? <span className="text-[13px] leading-5 text-ink-2">{meta}</span> : null}
+        </div>
+      </div>
       {head ? (
-        <p data-testid="transport-none" className="m-0 max-w-[64ch] font-medium text-risk">
+        <p data-testid="transport-none" className="m-0 flex items-center gap-1.5 text-[14px] leading-5 font-semibold text-risk">
+          <CircleX className="size-4 shrink-0" aria-hidden="true" />
           {head}
         </p>
       ) : null}
-      <ul className="m-0 grid list-none p-0">
-        {(l.modes || []).map((m, i) => (
-          <ModeRow key={`${m.mode}-${i}`} m={m} l={l} />
+      <ul className={`m-0 grid list-none gap-2 p-0 ${modes.length >= 3 ? 'sm:grid-cols-3' : modes.length === 2 ? 'sm:grid-cols-2' : ''}`}>
+        {modes.map((m, i) => (
+          <ModeTile key={`${m.mode}-${i}`} m={m} l={l} />
         ))}
       </ul>
     </section>
@@ -141,6 +163,11 @@ function Assumptions({ t }: { t: Transport }) {
             ))}
           </ul>
         ) : null}
+        {(t.lanes || []).some((l) => (l.modes || []).length) ? (
+          <ul data-testid="transport-arrivals" className="m-0 grid list-none gap-1 p-0">
+            {(t.lanes || []).flatMap((l, i) => (l.modes || []).map((m, j) => <li key={`${i}-${j}`} className="text-ink-2">{`${l.supplier || 'Supplier'}, ${cap(m.mode) || 'Mode'}: ${marginText(m)}${m.route ? ` (${m.route})` : ''}`}</li>))}
+          </ul>
+        ) : null}
         {t.cross_check?.note ? <p className="m-0 max-w-[64ch] text-ink-2">{t.cross_check.note}</p> : null}
         {asOf ? <p className="m-0 text-ink-3">As of {asOf} (Berlin time).</p> : null}
         <p className="m-0 font-medium">Estimates, not customer data. Confirm freight rates with Soony logistics.</p>
@@ -153,7 +180,7 @@ export function TransportSection({ t }: { t?: Transport | null }) {
   if (!hasLanes(t)) return null;
   const dl = deadlineText(t.deadline);
   return (
-    <section data-demo="transport" data-testid="transport" aria-label="Transport options" className="grid gap-4 border-t border-line pt-6">
+    <section data-demo="transport" data-testid="transport" aria-label="Transport options" className="grid gap-4 rounded-2xl border border-line bg-white p-4 shadow-card sm:p-6">
       <div className="grid gap-1">
         <h2 className="m-0 text-[17px] leading-6 font-semibold tracking-[-0.01em]">Transport options</h2>
         <p className="m-0 text-[14px] text-ink-2">{`Estimates by transport mode, not quotes${dl ? `. Deadline ${dl}.` : '.'}`}</p>
