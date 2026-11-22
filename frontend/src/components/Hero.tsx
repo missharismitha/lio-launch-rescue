@@ -1,4 +1,4 @@
-import { ArrowRight, RefreshCw } from 'lucide-react';
+import { ArrowRight, Play, RefreshCw } from 'lucide-react';
 import { NumberTicker } from '@/components/ui/number-ticker';
 import { Button } from '@/components/ui/button';
 import { useLaunch } from '@/hooks/useLaunch';
@@ -164,6 +164,15 @@ export function Hero({ d, o }: { d: Detail; o: Overview }) {
               )}
             </Button>
           ) : null}
+          <button
+            type="button"
+            data-testid="hero-demo"
+            onClick={() => { ui.closeSheet(); ui.setDemoOpen(true); }}
+            className="inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-control border-0 bg-transparent px-0 text-[15px] font-semibold text-white underline underline-offset-4 hover:text-brand-100 focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <Play className="size-4 fill-current" aria-hidden="true" />
+            Watch the 2-minute demo
+          </button>
         </div>
         <div className="grid min-w-0 grid-cols-2 justify-items-center gap-2 sm:gap-8" data-testid="hero-products">
           <ProductRing name="Standard" product={standard} src="/img/box-standard.png" alt="Standard Edition game box" float="float-a" />

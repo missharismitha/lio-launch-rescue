@@ -1,4 +1,4 @@
-import { Clock, Rocket } from 'lucide-react';
+import { Clock, Play, Rocket } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useLaunch } from '@/hooks/useLaunch';
@@ -67,7 +67,6 @@ export function Header({ d, o }: { d: Detail | null; o: Overview }) {
   const { selected, selectCase } = useLaunch();
   const ui = useUi();
   const v = DATA_VIEW[dataState(o)];
-  void d;
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur print:hidden">
       <div className="mx-auto flex max-w-[1200px] flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 sm:gap-x-4 sm:px-8">
@@ -85,6 +84,13 @@ export function Header({ d, o }: { d: Detail | null; o: Overview }) {
         <div className="order-last w-full min-w-0 sm:order-none sm:w-auto">
           <CaseSelect o={o} selected={selected} onChange={selectCase} />
         </div>
+        {d ? (
+          <Button variant="secondary" size="sm" data-testid="watch-demo" aria-label="Watch demo" className="order-2 sm:order-none" onClick={() => { ui.closeSheet(); ui.setDemoOpen(true); }}>
+            <Play className="size-4 fill-current" aria-hidden="true" />
+            <span className="sm:hidden">Demo</span>
+            <span className="hidden sm:inline">Watch demo</span>
+          </Button>
+        ) : null}
         <Button variant="ghost" size="sm" id="details" data-testid="details" className="order-2 -mr-2 sm:order-none" onClick={() => ui.openSheet('brief', 'details')}>
           Details
         </Button>

@@ -2,6 +2,10 @@
 
 Record the live app (http://127.0.0.1:8000) with a voice-over. The video is the backup if Wi-Fi fails, and part of the hand-in (deadline Sunday 12:00).
 
+## Fastest path: record the built-in narrated demo
+The app has a voice-over demo (AI voice, nine scenes, about 2:00). Start the app, open http://127.0.0.1:8000, click **Watch demo**, then **Play**. The tour scrolls to each section, spotlights it, shows subtitles and speaks. Press Win+G, start a recording of the browser window with audio on (or use OBS with desktop audio), play the whole tour once, and stop. That is already a complete, in-time video (under 3:00). Add your own intro or outro only if you want one.
+Voice-over script and audio: `scripts/make_demo_voice.py` (regenerates the mp3 files and `frontend/src/lib/demoManifest.json`; edit the scene texts there, then run it).
+
 ## Record
 - Windows: press Win+G (Xbox Game Bar), click Record, or use OBS Studio. Record the browser window only.
 - Browser at 1280 px wide, zoom 100 percent, address bar visible only if it shows `127.0.0.1:8000`. No other tabs, no email, no Notepad with `.env`.

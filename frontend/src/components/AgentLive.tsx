@@ -2,6 +2,7 @@ import { AnimatePresence, m } from 'motion/react';
 import { Bot, Check, ChevronDown, CircleX, Hand, LoaderCircle, Minus, RotateCcw, ShieldHalf, Timer, type LucideIcon } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { groupLabel, railRows, type RailRow } from '@/components/AgentRail';
+import { useDemoReplay } from '@/hooks/useDemoReplay';
 import { useLaunch } from '@/hooks/useLaunch';
 import {
   AUTO_START_MS, autoStartKey, autonomyWord, blockedText, callsText, groupPhases, modeBadge, nowText, offsetSeconds,
@@ -200,7 +201,7 @@ function PhaseIcon({ s }: { s: PhaseState }) {
   return <span aria-hidden="true" className="size-2 shrink-0 rounded-full bg-line-2" />;
 }
 
-function Pipeline({ phases, open, onOpen }: { phases: Phase[]; open: string | null; onOpen: (k: string | null) => void }) {
+function Pipeline({ phases, open, onOpen, fill }: { phases: Phase[]; open: string | null; onOpen: (k: string | null) => void; fill?: boolean[] }) {
   return (
     <div data-testid="agent-pipeline" className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-0">
       {phases.map((p, i) => {
@@ -236,8 +237,8 @@ function Pipeline({ phases, open, onOpen }: { phases: Phase[]; open: string | nu
               <span aria-hidden="true" className="hidden h-0.5 min-w-3 flex-1 overflow-hidden rounded-full bg-line sm:block">
                 <span
                   data-testid="agent-link"
-                  data-filled={phases[i + 1].steps.length > 0}
-                  className={`block h-full rounded-full bg-brand transition-[width] duration-500 motion-reduce:transition-none ${phases[i + 1].steps.length > 0 ? 'w-full' : 'w-0'}`}
+                  data-filled={fill ? fill[i + 1] : phases[i + 1].steps.length > 0}
+                  className={`block h-full rounded-full bg-brand transition-[width] duration-500 motion-reduce:transition-none ${(fill ? fill[i + 1] : phases[i + 1].steps.length > 0) ? 'w-full' : 'w-0'}`}
                 />
               </span>
             ) : null}
@@ -328,7 +329,17 @@ export function AgentLive({ d, o, autoStart = true }: { d: Detail; o: Overview; 
   const [open, setOpen] = useState<string | null>(null);
   const [openPhase, setOpenPhase] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  const phases = groupPhases(steps);
+  const realPhases = groupPhases(steps);
+  /* guided demo only: replay the pipeline filling left to right over the scene; real data, nothing is called */
+  const replay = useDemoReplay('agent');
+  const activeIdx = realPhases.map((p, n) => (p.steps.length ? n : -1)).filter((n) => n >= 0);
+  const replaying = replay != null && activeIdx.length > 0;
+  const lit = replaying ? Math.min(activeIdx.length, Math.floor((replay / 0.9) * activeIdx.length) + 1) : 0;
+  const litSet = new Set(activeIdx.slice(0, lit));
+  const curIdx = replaying && replay < 0.9 ? activeIdx[lit - 1] : -1;
+  const phases: Phase[] = replaying ? realPhases.map((p, n) => (!p.steps.length ? p : !litSet.has(n) ? { ...p, state: 'waiting' } : n === curIdx ? { ...p, state: 'running' } : p)) : realPhases;
+  const replayFill = replaying ? realPhases.map((p, n) => litSet.has(n) && p.steps.length > 0) : undefined;
+  const replayNow = replaying && curIdx >= 0 ? `${realPhases[curIdx].name}…` : '';
   const openedPhase = phases.find((p) => p.key === openPhase && p.steps.length > 0) || null;
   useEffect(() => {
     if (!openPhase) return;
@@ -485,7 +496,16 @@ export function AgentLive({ d, o, autoStart = true }: { d: Detail; o: Overview; 
 
       {steps.length ? (
         <div className="grid gap-3">
-          <Pipeline phases={phases} open={openedPhase?.key ?? null} onOpen={setOpenPhase} />
+          <Pipeline phases={phases} open={openedPhase?.key ?? null} onOpen={setOpenPhase} fill={replayFill} />
+
+          {replayNow ? (
+            <p data-testid="agent-now" data-demo-replay="" className="m-0 flex items-center gap-1 text-[15px] font-semibold leading-6 text-ink">
+              <m.span key={replayNow} initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+                {replayNow}
+              </m.span>
+              <span aria-hidden="true" className="inline-block h-4 w-0.5 animate-pulse bg-brand motion-reduce:animate-none" />
+            </p>
+          ) : null}
 
           {working && nowLabel ? (
             <p data-testid="agent-now" className="m-0 flex items-center gap-1 text-[15px] font-semibold leading-6 text-ink">

@@ -162,7 +162,7 @@ export function Parts({ o, selected, onSelect }: { o: Overview; selected?: strin
 /* Full-width section: what goes in the box, below the decision row. */
 export function BomSection({ o, selected, onSelect }: { o: Overview; selected?: string | null; onSelect?: (id: string) => void }) {
   return (
-    <section data-testid="bom-section" aria-label="What goes in the box" className="min-w-0">
+    <section data-testid="bom-section" data-demo="parts" aria-label="What goes in the box" className="min-w-0">
       <BomPanel issues={o.issues || []} selected={selected} onSelect={onSelect} />
     </section>
   );

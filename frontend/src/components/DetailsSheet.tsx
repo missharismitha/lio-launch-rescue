@@ -331,7 +331,7 @@ export function DetailsSheet({ d, o, onStartDemo }: { d: Detail; o: Overview; on
       </Button>
       <Button size="sm" variant="ghost" data-testid="demo-start" onClick={onStartDemo}>
         <Sparkles className="size-4" aria-hidden="true" />
-        Start guided demo
+        Start guided demo (voice-over)
       </Button>
       <Button size="sm" variant="ghost" data-testid="sign-out" onClick={() => void signOut()}>
         <LogOut className="size-4" aria-hidden="true" />

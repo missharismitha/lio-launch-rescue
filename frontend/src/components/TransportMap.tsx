@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 
 import { motion } from 'motion/react';
 import { CalendarClock, Map as MapIcon, Table2, TriangleAlert } from 'lucide-react';
 import { arrivalText } from '@/components/Transport';
+import { useDemoState } from '@/hooks/useUi';
 import { etaText } from '@/lib/format';
 import type { MapData, MapShipment, Transport } from '@/lib/types';
 import { arcPath, ASPECT_DESKTOP, ASPECT_MOBILE, buildView, clusterShipments, hubLabel, isMoving, landPath, laneFor, modeColor, MODE_DASH, placeLabels, project, resolveRoutes, shortMaterial, supplierOf, timing, type Leg } from './map/geo';
@@ -98,6 +99,8 @@ const onLeg = (s: MapShipment, l: Leg): boolean => l.mode === s.mode && (l.keys.
 
 export function TransportMap({ map, transport }: { map?: MapData; transport?: Transport }) {
   const reduced = useReducedMotion();
+  /* guided demo only: remount the route layer so the draw-in animation plays again while the voice explains the map */
+  const demoMap = useDemoState().demoScene === 'map';
   const mobile = useMedia('(max-width: 639px)');
   const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
   const [view, setView] = useState<'map' | 'table'>('map');
@@ -179,7 +182,7 @@ export function TransportMap({ map, transport }: { map?: MapData; transport?: Tr
   const btn = (on: boolean) => `inline-flex min-h-9 items-center gap-1.5 rounded-[10px] px-3 text-[14px] font-medium ${on ? 'bg-brand text-white' : 'text-ink-2 hover:bg-page'}`;
 
   return (
-    <section data-testid="transport-map" aria-label="Transport map" className="grid gap-3">
+    <section data-testid="transport-map" data-demo="map" aria-label="Transport map" className="grid gap-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div data-testid="map-deadline" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] leading-5 text-ink">
           <span className="inline-flex items-center gap-1.5 font-semibold">
@@ -215,7 +218,7 @@ export function TransportMap({ map, transport }: { map?: MapData; transport?: Tr
               <path d={geo.land} fill={LAND} stroke="#fff" strokeWidth="0.75" strokeLinejoin="round" />
 
               {/* routes */}
-              <g fill="none" strokeLinecap="round">
+              <g key={demoMap ? 'demo' : 'base'} fill="none" strokeLinecap="round">
                 {geo.legs.map((l, i) => {
                   const on = related(l);
                   const maskId = `rm${uid}${i}`;

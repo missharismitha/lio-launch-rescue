@@ -1,6 +1,7 @@
 import { AlertTriangle, Bot, Check, ClipboardCheck, Database, FileSearch, MailOpen, Package, Send, ShieldCheck, Timer, Truck } from 'lucide-react';
 import { m } from 'motion/react';
 import { useEffect, useState, type ComponentType } from 'react';
+import { useDemoReplay } from '@/hooks/useDemoReplay';
 import { cn } from '@/lib/cn';
 import type { Detail, Overview } from '@/lib/types';
 import {
@@ -79,12 +80,15 @@ function Circle({ stage, isCurrent }: { stage: Stage; isCurrent: boolean }) {
 }
 
 function Track({ stages, level }: { stages: Stage[]; level: number }) {
+  /* guided demo only: replay the connector fill from the first stage to the current one */
+  const replay = useDemoReplay('tracking');
+  const shown = replay == null ? level : Math.min(level, Math.floor((replay / 0.85) * (level + 1)));
   return (
     <ol className="m-0 flex list-none flex-col p-0 md:flex-row" aria-label="Launch stages">
       {stages.map((s, i) => {
         const isCurrent = i === level;
         const last = i === stages.length - 1;
-        const filled = i < level;
+        const filled = i < shown;
         return (
           <li
             key={s.id}
@@ -195,6 +199,7 @@ export function WorkflowTracker({ d, o }: { d: Detail; o: Overview }) {
   return (
     <section
       id="workflow"
+      data-demo="tracking"
       data-testid="workflow-tracker"
       aria-label="Launch tracking"
       className="grid gap-6 rounded-[16px] bg-white p-5 shadow-card sm:p-7"

@@ -1,0 +1,88 @@
+{
+  "voice": "coral",
+  "model": "gpt-4o-mini-tts",
+  "total_ms": 117050,
+  "scenes": [
+    {
+      "id": "problem",
+      "selector": "[data-demo=\"problem\"]",
+      "sheetTab": null,
+      "caption": "The problem",
+      "text": "Sunday, eight p.m., the trucks leave Hamburg with Grand Heist 6. Soony's sheet says the game cards are fine. Our agent read every file and found six thousand eight hundred Standard copies short.",
+      "file": "/audio/demo/01-problem.mp3",
+      "ms": 14500
+    },
+    {
+      "id": "parts",
+      "selector": "[data-demo=\"parts\"]",
+      "sheetTab": null,
+      "caption": "What is short",
+      "text": "Every copy is a kit of parts. The Collector's box adds a steel case, art book, poster, statue and four lid magnets. Red chips mark the parts that are short, shown with the real pictures from the brief.",
+      "file": "/audio/demo/02-parts.mp3",
+      "ms": 14100
+    },
+    {
+      "id": "agent",
+      "selector": "[data-demo=\"agent\"]",
+      "sheetTab": "agent",
+      "caption": "The agent at work",
+      "text": "The agent starts by itself. It reads the records, finds conflicts and a supplier hold, compares transport, checks the approval policy and drafts the messages. It can read, compute and draft, but it can never send, pay or book.",
+      "file": "/audio/demo/03-agent.mp3",
+      "ms": 15750
+    },
+    {
+      "id": "map",
+      "selector": "[data-demo=\"map\"]",
+      "sheetTab": null,
+      "caption": "The supply network",
+      "text": "Here is the network: suppliers in Korea, China, India, Poland and the US. Air is solid, sea is dashed. Red markers will miss Sunday.",
+      "file": "/audio/demo/04-map.mp3",
+      "ms": 11650
+    },
+    {
+      "id": "transport",
+      "selector": "[data-demo=\"transport\"]",
+      "sheetTab": null,
+      "caption": "Transport options",
+      "text": "For the game cards, no transport mode makes the deadline. Air is four days late. Costs are labelled estimates. So a faster flight is not the answer.",
+      "file": "/audio/demo/05-transport.mp3",
+      "ms": 11950
+    },
+    {
+      "id": "decision",
+      "selector": "[data-demo=\"decision\"]",
+      "sheetTab": null,
+      "caption": "The decision",
+      "text": "The answer is Boise: thirty six thousand cards are packed and on hold, because our order and their agreement disagree on delivery terms. That is five times the gap. The approver is Doctor Maren Vogt.",
+      "file": "/audio/demo/06-decision.mp3",
+      "ms": 14350
+    },
+    {
+      "id": "approval",
+      "selector": "[data-demo=\"decision\"]",
+      "sheetTab": null,
+      "caption": "Human in charge",
+      "text": "A named person approves, in two steps. The app never sends email: a person sends it from their own mailbox, and the reply comes back as a file for review.",
+      "file": "/audio/demo/07-approval.mp3",
+      "ms": 14050
+    },
+    {
+      "id": "tracking",
+      "selector": "[data-demo=\"tracking\"]",
+      "sheetTab": null,
+      "caption": "Launch tracking",
+      "text": "Launch tracking shows the workflow like a parcel: data in, problem found, agent plan, approval, sent, reply. Right now it waits for your approval.",
+      "file": "/audio/demo/08-tracking.mp3",
+      "ms": 11850
+    },
+    {
+      "id": "close",
+      "selector": "[data-demo=\"problem\"]",
+      "sheetTab": null,
+      "caption": "Launch Control",
+      "text": "Launch Control reads the mess, finds what breaks, and keeps a human in charge. It works for any launch with a fixed date.",
+      "file": "/audio/demo/09-close.mp3",
+      "ms": 8850
+    }
+  ]
+}

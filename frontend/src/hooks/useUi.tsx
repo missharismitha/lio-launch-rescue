@@ -9,6 +9,11 @@ interface Ui {
   openerId: string;
   approval: ApprovalTarget | null;
   demoOpen: boolean;
+  /* guided demo: id of the scene being narrated (null when none) and whether it is playing (not paused) */
+  demoScene: string | null;
+  demoPlaying: boolean;
+  setDemoScene: (id: string | null) => void;
+  setDemoPlaying: (p: boolean) => void;
   openSheet: (tab: TabId, openerId?: string) => void;
   closeSheet: () => void;
   setTab: (t: TabId) => void;
@@ -25,12 +30,20 @@ export const useUi = (): Ui => {
   return v;
 };
 
+/* tolerant read for visual components that may render without the provider (tests, embeds) */
+export const useDemoState = (): { demoScene: string | null; demoPlaying: boolean } => {
+  const v = useContext(Ctx);
+  return { demoScene: v?.demoScene ?? null, demoPlaying: v?.demoPlaying ?? false };
+};
+
 export function UiProvider({ children }: { children: ReactNode }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [tab, setTab] = useState<TabId>('brief');
   const [openerId, setOpenerId] = useState('details');
   const [approval, setApproval] = useState<ApprovalTarget | null>(null);
   const [demoOpen, setDemoOpen] = useState(false);
+  const [demoScene, setDemoScene] = useState<string | null>(null);
+  const [demoPlaying, setDemoPlaying] = useState(false);
 
   const openSheet = useCallback((t: TabId, opener = 'details') => {
     setTab(t);
@@ -62,8 +75,12 @@ export function UiProvider({ children }: { children: ReactNode }) {
       startApproval,
       endApproval: () => setApproval(null),
       setDemoOpen,
+      demoScene,
+      demoPlaying,
+      setDemoScene,
+      setDemoPlaying,
     }),
-    [sheetOpen, tab, openerId, approval, demoOpen, openSheet, closeSheet, startApproval],
+    [sheetOpen, tab, openerId, approval, demoOpen, demoScene, demoPlaying, openSheet, closeSheet, startApproval],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
