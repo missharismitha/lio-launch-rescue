@@ -17,9 +17,9 @@ Deadline: Sunday 22 Nov 2026 12:00. Platform facts below were checked against th
   For the demo, do the approval flow live in one session. Do not prepare it hours in advance.
 - **The AI uses OpenAI.** The Claude CLI backend is not in the image, so set `OPENAI_API_KEY` and `LIO_AI_MODEL`. Without them the app still works, using the rule-based fallback.
 
-## Before either option: push the code
+## Before either option
 
-The latest code is on branch `codex/launch-rescue-mvp`, and it has **not been pushed yet**. Push it to `github.com/missharismitha/lio-launch-rescue` (private). Then check on GitHub that the branch contains `Dockerfile`, `render.yaml` and `app/static/`, and contains no `data/`, `.env` or `.local/`.
+The latest code is pushed to `github.com/missharismitha/lio-launch-rescue` (private) on both `main` and `codex/launch-rescue-mvp` (identical). Use `main`. Check on GitHub that it contains `Dockerfile`, `render.yaml` and `app/static/`, and no `data/`, `.env` or `.local/`.
 
 ## 1. Recommended: Render free web service
 
@@ -34,19 +34,19 @@ Not verified (check on the Render pricing page): free instance RAM/CPU (believed
 ### Option A: Blueprint (uses `render.yaml`)
 
 1. Sign up at dashboard.render.com with GitHub. When asked, grant the Render GitHub App access to `missharismitha/lio-launch-rescue`. You can also do this later under Account settings > GitHub > Configure, then "Only select repositories". The repo is private, so without this grant Render cannot see it.
-2. Click **New > Blueprint**, pick the repo, and set the branch to **`codex/launch-rescue-mvp`**.
+2. Click **New > Blueprint**, pick the repo, and set the branch to **`main`**.
 3. Render reads `render.yaml`: service `lio-launch-control`, Docker, `plan: free`, health check `/api/health`, `LIO_EMAIL_ENABLED=false`, `LIO_AI_MODEL=gpt-5.5`. If `LIO_AI_MODEL` should differ, change it to the model name in the local `.env`.
 4. Render then asks for each `sync: false` value:
    - `LIO_PORTAL_TOKEN`: the portal token
    - `OPENAI_API_KEY`: the OpenAI key
    - `LIO_ACCESS_CODE`: a long random code
    - `LIO_ALLOWED_HOSTS`: `lio-launch-control.onrender.com`. If the name is taken, Render adds a suffix. Use the exact host shown on the service page, without `https://` and without a trailing slash.
-5. Click **Apply**. Wait for the build and the "Live" status.
+5. Click **Apply**. Wait for the build and the "Live" status. The first start then downloads about 52 MB of data from the portal, which took about 4 minutes in our laptop test: `/api/health` shows `"data_present":false` until it finishes, and the pages may not load meanwhile.
 6. If you guessed the host wrong in step 4, requests return "Invalid host header". Fix it under service > **Environment**, then save. Render redeploys.
 
 ### Option B: manual web service (if the Blueprint fails)
 
-1. **New > Web Service**, then **Git Provider**. Pick the repo and branch `codex/launch-rescue-mvp`.
+1. **New > Web Service**, then **Git Provider**. Pick the repo and branch `main`.
 2. Runtime: **Docker** (detected from `Dockerfile`). Instance type: **Free**. Region: **Frankfurt**, which is close to the portal in West Europe.
 3. Under **Advanced**, set the health check path to `/api/health`. Add these variables:
    - `LIO_PORTAL_TOKEN`
