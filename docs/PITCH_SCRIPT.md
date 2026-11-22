@@ -8,7 +8,7 @@ Order you asked for: **business case first, then the demo, then the tech at the 
 |---|---|---|---|
 | 0:00 - 0:40 | Maria | Business case | 1, 2, 3, 5 |
 | 0:41 - 2:40 | (nobody) | Live demo in the app: **Watch demo, then Play** (1:59) | switch to the app tab |
-| 2:41 - 3:00 | Nico | Tech in plain words + close | 7, then 9 |
+| 2:41 - 3:00 | Nico | Tech in plain words + close | 7, then 10 for questions |
 | then | both | Q&A (2 min) | 10 |
 
 Words in CAPS get a small push. (pause) means stop for a second.
