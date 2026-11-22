@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Launch Control: pitch deck</title>
+<!-- Source of docs/deck/Launch-Control-pitch-deck.pdf. Screenshots are of the real app (img/). Export: see docs/deck/README.md -->
+<style>
+ @page { size: 1280px 720px; margin: 0; }
+ *{box-sizing:border-box} html,body{margin:0;background:#fff;color:#101828;font-family:"Segoe UI",system-ui,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .s{width:1280px;height:720px;padding:46px 64px 40px;position:relative;overflow:hidden;page-break-after:always;break-after:page;display:flex;flex-direction:column;background:#fff}
+ .s:last-child{page-break-after:auto;break-after:auto}
+ .tag{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:#1f4fd8;font-weight:700;margin-bottom:8px}
+ .pg{position:absolute;right:64px;top:42px;font-size:13px;color:#667085}
+ h1{font-size:40px;line-height:1.1;margin:0 0 16px;letter-spacing:-.02em;font-weight:750;max-width:1050px}
+ h2{font-size:21px;margin:0 0 8px;font-weight:700}
+ p,li{font-size:19px;line-height:1.38;margin:0 0 8px;color:#344054}
+ ul{margin:0;padding-left:22px}
+ .sub{color:#667085;font-size:16px}
+ .brand{color:#1f4fd8}.red{color:#b42318}.ok{color:#12805c}
+ .row{display:flex;gap:22px}.col{flex:1;min-width:0}
+ .card{border:1px solid #e4e7ec;border-radius:16px;padding:16px 18px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+ .tint{background:#eef3ff;border-color:#dce6ff}
+ .navy{background:linear-gradient(135deg,#0b1f5c,#1f4fd8);color:#fff;border:0}
+ .navy p,.navy li,.navy h2{color:#fff}
+ .num{font-size:54px;font-weight:800;letter-spacing:-.03em;line-height:1;font-variant-numeric:tabular-nums}
+ .lab{font-size:15px;color:#667085;margin-top:4px}
+ .chip{display:inline-block;font-size:14px;font-weight:700;padding:5px 12px;border-radius:999px;border:1.5px solid #1f4fd8;color:#1f4fd8;background:#fff}
+ .arrow{align-self:center;color:#98a2b3;font-size:22px}
+ .shot{width:100%;border-radius:12px;border:1px solid #e4e7ec;display:block}
+ .foot{margin-top:auto;font-size:13px;color:#667085;display:flex;justify-content:space-between;padding-top:8px}
+ .note{font-size:14px;color:#b54708;background:#fff4e5;border-radius:10px;padding:6px 12px;display:inline-block}
+ .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.grid5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+ .stat{padding:12px 14px;border-radius:14px;background:#f5f7fb}
+ .stat b{font-size:26px;display:block;letter-spacing:-.02em}
+ .pipe{display:flex;gap:8px;align-items:center;margin:10px 0 14px}
+ .pipe .chip{font-size:16px;padding:8px 14px;border-color:#101828;color:#101828}
+ table{border-collapse:collapse;width:100%}td,th{font-size:16px;text-align:left;padding:7px 10px;border-bottom:1px solid #e4e7ec;vertical-align:top}th{color:#667085;font-weight:600}
+</style></head><body>
+
+<!-- 1 TITLE -->
+<section class="s navy" style="flex-direction:row;align-items:center;gap:30px">
+ <div style="flex:1.25">
+  <div class="tag" style="color:#bcd0ff">START Hack Munich 2026 · Lio challenge: Keep the Line Running</div>
+  <h1 style="font-size:70px;line-height:1;color:#fff;margin-bottom:18px">Launch Control</h1>
+  <p style="font-size:28px;color:#fff;margin-bottom:26px">From document chaos to confident decisions.</p>
+  <p style="font-size:24px;color:#ffd5cc;font-weight:700">Find out at the desk, not at the dock.</p>
+  <p style="font-size:16px;color:#bcd0ff;margin-top:30px">An AI agent that reads the files, finds what breaks, and keeps a human in charge.</p>
+ </div>
+ <div style="flex:1;display:flex;gap:22px;align-items:flex-end;justify-content:center">
+  <img src="../../frontend/public/img/box-standard.png" style="height:330px" alt="Standard Edition"><img src="../../frontend/public/img/box-collectors.png" style="height:390px" alt="Collector's Edition">
+ </div>
+</section>
+
+<!-- 2 PROBLEM -->
+<section class="s">
+ <div class="tag">1 · The problem</div><div class="pg">2 / 10</div>
+ <h1>Soony's sheet said "OK". The records said <span class="red">6,800 copies short.</span></h1>
+ <div class="row" style="margin-bottom:14px">
+  <div class="col card" style="flex:.8"><div class="num red">6,800</div><div class="lab">Standard copies would not ship on time</div>
+   <p style="margin-top:12px" class="sub">Plan sheet: game cards "OK, +13,200 to spare". Supplier shipped 28,000 of 48,000; packing had already used the cards.</p></div>
+  <div class="col card tint" style="flex:1.2"><h2>Why nobody saw it</h2>
+   <ul><li>Orders in SAP. Everything else in Excel, scanned PDFs, contracts and emails.</li><li>Suppliers write in Korean, Chinese, Polish and English.</li><li>Shipments tracked in a spreadsheet "updated when someone remembers".</li></ul>
+   <p style="margin-top:10px;font-weight:700">"We find out at the dock." <span class="sub" style="font-weight:400">· Soony kickoff notes</span></p></div>
+ </div>
+ <div class="grid5"><div class="stat"><b>487,000</b>pre-orders</div><div class="stat"><b>640,000</b>Standard copies</div><div class="stat"><b>72,000</b>Collector's, all pre-ordered</div><div class="stat"><b>6 → 1</b>suppliers → one site</div><div class="stat"><b>30 h</b>of packing, no night shift</div></div>
+ <p style="margin-top:14px"><b>The real problem is not missing data. It is disconnected information, and decisions that come too late.</b></p>
+ <div class="foot"><span>Sources: Lio challenge brief, Soony kickoff notes, Soony launch plan</span></div>
+</section>
+
+<!-- 3 SOLUTION -->
+<section class="s">
+ <div class="tag">2 · Our solution</div><div class="pg">3 / 10</div>
+ <h1>An AI decision layer between messy documents and real-world action</h1>
+ <div class="row" style="flex:1;min-height:0">
+  <div class="col" style="flex:.9">
+   <p>Launch Control connects information across documents, finds contradictions, tracks supply risk and recommends the next action. In one screen it answers four questions:</p>
+   <div class="card tint" style="margin-bottom:10px"><b>1 · What is going wrong?</b> 6,800 short, 10 records disagree</div>
+   <div class="card tint" style="margin-bottom:10px"><b>2 · Why?</b> a supplier shipped part of an order; 36,000 cards sit on hold</div>
+   <div class="card tint" style="margin-bottom:10px"><b>3 · What are the options?</b> priced as labelled estimates, or "unknown"</div>
+   <div class="card tint"><b>4 · Who decides?</b> routed to the approver named in Soony's policy</div>
+   <p style="margin-top:12px"><b class="brand">We don't just find problems. We turn information into decisions.</b></p>
+  </div>
+  <div class="col" style="flex:1.1"><img class="shot" src="img/agent.png" alt="The agent at work"><img class="shot" style="margin-top:12px" src="img/decision.png" alt="The decision card"></div>
+ </div>
+</section>
+
+<!-- 4 AUDIENCE / VALUE -->
+<section class="s">
+ <div class="tag">3 · Who it is for, and the value</div><div class="pg">4 / 10</div>
+ <h1>Built for the people who find out last</h1>
+ <div class="grid3" style="margin-bottom:16px">
+  <div class="card"><h2>Daily users</h2><ul><li>Supply-chain managers</li><li>Procurement teams</li><li>Operations managers</li></ul></div>
+  <div class="card"><h2>Buyers</h2><ul><li>Head of Procurement</li><li>Head of Operations</li><li>Launch and programme leads</li></ul></div>
+  <div class="card"><h2>First customers</h2><ul><li>Game publishers</li><li>Distributors</li><li>Anyone with a fixed launch date and a product built from several suppliers' parts</li></ul></div>
+ </div>
+ <div class="card navy" style="margin-bottom:14px"><h2>The value, in plain words</h2><p style="font-size:21px">Fewer manual checks · risks found earlier · decisions made faster · an audit trail for every decision. Every avoided delay protects revenue, cuts rush costs and makes launches reliable.</p></div>
+ <div class="row"><div class="col card"><h2>Same problem elsewhere</h2><p>Consumer electronics bundles, retail launches, manufacturing ramp-ups, subscription boxes.</p></div>
+ <div class="col card"><h2>What we would measure in a pilot</h2><p>Time saved per decision · risks found before the dock · decisions accelerated.</p></div></div>
+ <div class="foot"><span class="note">Target segments and KPIs are our hypotheses, tested on one customer dataset.</span></div>
+</section>
+
+<!-- 5 BUSINESS MODEL -->
+<section class="s">
+ <div class="tag">4 · Business model, go-to-market and financing</div><div class="pg">5 / 10</div>
+ <h1>B2B SaaS, proven through paid pilots</h1>
+ <div class="row" style="flex:1;min-height:0">
+  <div class="col">
+   <table>
+    <tr><th style="width:150px">Model</th><td>Recurring subscription by projects, users and documents processed. Optional integration fee for large enterprises.</td></tr>
+    <tr><th>Price idea</th><td><b>A launch-week or per-project fee, well below one expedited shipment.</b> A hypothesis to test with customers.</td></tr>
+    <tr><th>Go-to-market</th><td>1) Paid pilots with a few launch-operations teams. 2) Prove value with KPIs. 3) Enterprise sales and partnerships.</td></tr>
+    <tr><th>Financing</th><td>Revenue-first: pilots validate willingness to pay and fund development.</td></tr>
+    <tr><th>Main costs</th><td>Cloud, AI processing, customer integrations.</td></tr>
+   </table>
+  </div>
+  <div class="col" style="flex:.8">
+   <div class="card tint" style="margin-bottom:12px"><div class="num brand" style="font-size:44px">€80,920</div><div class="lab">product cost at stake in this one shortage (6,800 × €11.90, at cost, not price)</div></div>
+   <div class="card tint" style="margin-bottom:12px"><div class="num brand" style="font-size:44px">€200,000</div><div class="lab">emergency air freight a category lead may approve per month under Soony's policy: a rush shipment is the benchmark for our fee</div></div>
+   <p class="sub">The vision: the decision layer between enterprise data and real-world operations.</p>
+  </div>
+ </div>
+ <div class="foot"><span class="note">Proposal. Prices, revenue and market size are not validated; we do not claim them.</span></div>
+</section>
+
+<!-- 6 DEMO -->
+<section class="s">
+ <div class="tag">5 · Live demo (2 minutes, narrated)</div><div class="pg">6 / 10</div>
+ <h1>Watch it work on Soony's real launch data</h1>
+ <div class="row" style="flex:1;min-height:0">
+  <div class="col" style="flex:1.5"><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+   <img class="shot" src="img/map.png" alt="Supply network map"><img class="shot" src="img/transport.png" alt="Transport options" style="object-fit:cover;object-position:top;height:228px">
+   <img class="shot" src="img/parts.png" alt="What goes in the box"><img class="shot" src="img/approval.png" alt="Human approval preview" style="object-fit:cover;object-position:top right;height:164px"></div></div>
+  <div class="col"><h2>What the demo shows</h2><ul>
+   <li>6,800 copies short, found before launch</li><li>The agent working: read, find, compare, rules, draft, decide</li><li>36,000 cards on hold at Boise</li><li>No transport mode makes Sunday, even air (estimate)</li><li>Human approval before anything leaves the building</li><li>Tracking from problem found to reply reviewed</li></ul></div>
+ </div>
+</section>
+
+<!-- 7 HOW IT WORKS -->
+<section class="s">
+ <div class="tag">6 · How it works</div><div class="pg">7 / 10</div>
+ <h1>AI that analyses. Rules that calculate. Humans who decide.</h1>
+ <div class="pipe"><span class="chip">Read</span><span class="arrow">›</span><span class="chip">Find</span><span class="arrow">›</span><span class="chip">Compare</span><span class="arrow">›</span><span class="chip">Apply rules</span><span class="arrow">›</span><span class="chip">Draft</span><span class="arrow">›</span><span class="chip" style="background:#101828;color:#fff">Decide (human)</span></div>
+ <div class="row" style="margin-bottom:14px">
+  <div class="card col"><h2>1 · Files in</h2><p>ERP, Excel, supplier PDFs, scans, contracts, policy, memos. New data drops are synced and re-checked.</p></div>
+  <div class="card col"><h2>2 · Code computes</h2><p>Stock, shortage, hours, priority and approver tiers come from the files, never from the AI.</p></div>
+  <div class="card col"><h2>3 · AI agent</h2><p>The model chooses among 15 read-only tools: holds, conflicts, transport, pricing, policy, drafts.</p></div>
+  <div class="card col"><h2>4 · Checked</h2><p>Every number in an AI draft is re-verified in code. A wrong number is replaced.</p></div>
+ </div>
+ <div class="card navy"><h2>The guard rails</h2><p style="font-size:20px">The agent <b>cannot send, pay, book or approve</b>: those tools do not exist for it. A named person approves in two steps, and approval is cancelled if the data changes. If the model is unavailable, a labelled rule-based mode takes over.</p></div>
+ <div class="foot"><span>Stack: Python (FastAPI) · React · OpenAI model with tool use · deterministic engine · 389 backend and 281 frontend tests</span></div>
+</section>
+
+<!-- 8 RESULTS -->
+<section class="s">
+ <div class="tag">7 · What it found on Soony's data</div><div class="pg">8 / 10</div>
+ <h1>Real findings, not a mock-up</h1>
+ <div class="grid3" style="margin-bottom:14px">
+  <div class="card"><div class="num red">6,800</div><div class="lab">Standard copies short. The plan sheet said "OK".</div></div>
+  <div class="card"><div class="num brand">10</div><div class="lab">places where Soony's own records disagree</div></div>
+  <div class="card"><div class="num ok">36,000</div><div class="lab">game cards packed and on hold at Boise: 5.3× the gap (arrival unconfirmed)</div></div>
+ </div>
+ <div class="row" style="flex:1;min-height:0">
+  <div class="col"><h2>Transport comparison (estimates)</h2>
+   <table><tr><th>Supplier</th><th>Fastest mode</th><th>vs Sunday 20:00</th></tr>
+   <tr><td>Hwaseong (KR)</td><td>Air</td><td class="red">about 4 days late</td></tr><tr><td>Boise (US)</td><td>Air</td><td class="red">about 4 days late</td></tr><tr><td>Art-book supplier (PL)</td><td>Road</td><td class="ok">fits, if stock exists</td></tr></table>
+   <p class="sub" style="margin-top:8px">So a faster flight is not the answer; the lever is the hold at Boise.</p></div>
+  <div class="col"><h2>Recommended first step</h2><div class="card tint"><b>Release the Boise hold.</b> Confirm EXW terms in writing or nominate a forwarder. Routed to the Head of Procurement; freight to the Category Lead, as the policy says.</div><p class="sub" style="margin-top:8px">Confidence is shown as low because arrival is not confirmed, and the screen says so.</p></div>
+ </div>
+ <div class="foot"><span>All freight figures are market-rate estimates with stated sources; the data contains no freight prices.</span></div>
+</section>
+
+<!-- 9 TRUST -->
+<section class="s">
+ <div class="tag">8 · Trust, security and scalability</div><div class="pg">9 / 10</div>
+ <h1>The control around the AI is the product</h1>
+ <div class="row" style="flex:1;min-height:0">
+  <div class="col card tint"><h2 class="ok">Built today</h2><ul>
+   <li>Named two-step human approval for every message</li><li>Code re-checks every number the AI writes</li><li>Labelled estimates; "unknown" instead of a guess</li><li>Privacy layer: the browser never receives source documents or addresses</li><li>Optional access-code login for hosted use</li><li>Generic input: a folder of POs, receipts, contracts, policy and memos</li><li>Event history for every step</li></ul></div>
+  <div class="col card"><h2 class="brand">Next, for an enterprise rollout</h2><ul>
+   <li>EU-based hosting and GDPR-compliant data handling</li><li>Roles, SSO and fine-grained access control</li><li>Exportable audit trail</li><li>Direct ERP integration instead of file exports</li><li>Supplier loops: send, read and escalate</li><li>Pilot KPIs and a second customer dataset</li></ul></div>
+ </div>
+ <p style="margin-top:12px"><b>Launch Control does not replace decision-makers. It gives them the right information before it is too late.</b></p>
+ <div class="foot"><span class="note">Right-hand column is roadmap. Today the app runs locally; it is not yet deployed.</span></div>
+</section>
+
+<!-- 10 CLOSE / Q&A -->
+<section class="s navy">
+ <div class="tag" style="color:#bcd0ff">Questions</div><div class="pg" style="color:#bcd0ff">10 / 10</div>
+ <h1 style="color:#fff;font-size:52px">Find out at the desk,<br>not at the dock.</h1>
+ <div class="row" style="margin-top:20px"><div class="col"><h2>Be ready to answer</h2>
+  <ul><li>Why would Soony pay, and how much?</li><li>Is anything hardcoded?</li><li>What if the AI is wrong?</li><li>Does it work beyond Soony?</li><li>What happens when new data arrives?</li><li>How do you handle security and GDPR?</li></ul></div>
+  <div class="col"><h2>One-line answers</h2><ul><li>Fee below one rush shipment (hypothesis).</li><li>No: facts come from the files.</li><li>It cannot send, pay or book; code checks numbers.</li><li>Any fixed-date launch with several suppliers.</li><li>Re-sync, recompute, void old approvals.</li><li>Roadmap: EU hosting, GDPR, roles, audit.</li></ul></div></div>
+ <div class="foot" style="color:#bcd0ff"><span>Launch Control · START Hack Munich 2026</span><span>github.com/missharismitha/lio-launch-rescue</span></div>
+</section>
+</body></html>
