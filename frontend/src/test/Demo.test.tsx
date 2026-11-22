@@ -53,15 +53,15 @@ afterEach(() => {
 });
 
 describe('demo manifest', () => {
-  it('has 9 scenes, same-origin files, allowed selectors and fits in 2:05 with gaps', () => {
-    expect(SCENES).toHaveLength(9);
-    const allowed = ['problem', 'parts', 'agent', 'map', 'transport', 'decision', 'tracking'].map((k) => `[data-demo="${k}"]`);
+  it('has 11 scenes, same-origin files, allowed selectors and fits in 2:05 with gaps', () => {
+    expect(SCENES).toHaveLength(11);
+    const allowed = ['problem', 'parts', 'agent', 'map', 'transport', 'whatif', 'decision', 'escalation', 'email', 'tracking'].map((k) => `[data-demo="${k}"]`);
     for (const s of manifest.scenes) {
       expect(s.file.startsWith('/audio/demo/')).toBe(true);
       expect(allowed).toContain(s.selector);
       expect(s.ms).toBeGreaterThan(0);
     }
-    expect(demoTotalMs()).toBe(manifest.scenes.reduce((a, s) => a + s.ms, 0) + 8 * GAP_MS);
+    expect(demoTotalMs()).toBe(manifest.scenes.reduce((a, s) => a + s.ms, 0) + 10 * GAP_MS);
     expect(demoTotalMs()).toBeLessThanOrEqual(MAX_TOTAL_MS);
     expect(MAX_TOTAL_MS).toBe(125000);
   });
@@ -99,7 +99,7 @@ describe('player', () => {
     expect(current(0)).toBeTruthy();
     expect(screen.getByTestId('demo-caption').textContent).toBe(SCENES[0].caption);
     expect(screen.getByTestId('demo-text').textContent).toBe(SCENES[0].text);
-    expect(screen.getAllByTestId('demo-dot')).toHaveLength(9);
+    expect(screen.getAllByTestId('demo-dot')).toHaveLength(11);
     expect(screen.getByTestId('demo-clock').textContent).toBe(`0:00 / ${clockText(demoTotalMs())}`);
   });
   it('ended advances after the gap', () => {
@@ -167,21 +167,21 @@ describe('player', () => {
       await Promise.resolve();
     });
     expect(screen.getByTestId('demo-voice-fail').textContent).toBe('Voice unavailable, captions only');
-    tick(SCENES[0].ms + 500);
+    tick(SCENES[0].ms + 1000);
     expect(screen.getByTestId('demo-caption').textContent).toBe(SCENES[1].caption);
   });
   it('captions only never plays audio but still runs on the timer', () => {
     mount();
     fireEvent.click(screen.getByTestId('demo-captions'));
     expect(playSpy).not.toHaveBeenCalled();
-    tick(SCENES[0].ms + 500);
+    tick(SCENES[0].ms + 1000);
     expect(screen.getByTestId('demo-caption').textContent).toBe(SCENES[1].caption);
   });
   it('shows the end card after the last scene, with Replay and Close', () => {
     mount();
     play();
-    fireEvent.click(screen.getAllByTestId('demo-dot')[8]);
-    act(() => void current(8).dispatchEvent(new Event('ended')));
+    fireEvent.click(screen.getAllByTestId('demo-dot')[10]);
+    act(() => void current(10).dispatchEvent(new Event('ended')));
     tick(GAP_MS + 10);
     expect(screen.getByText('That was the demo')).toBeTruthy();
     fireEvent.click(screen.getByTestId('demo-replay'));

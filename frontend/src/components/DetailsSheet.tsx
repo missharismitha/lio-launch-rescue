@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AgentRail } from '@/components/AgentRail';
 import { ApprovalFlow } from '@/components/ApprovalFlow';
 import { ApproverBadge, Fact, Facts, Money, RiskNote, SheetSection } from '@/components/common';
+import { ApprovalPreview } from '@/components/ApprovalPreview';
 import { OfferDetails } from '@/components/OfferCard';
 import { HoldNote, OptionList } from '@/components/Options';
 import { useLaunch } from '@/hooks/useLaunch';
@@ -122,7 +123,7 @@ function NumbersTab({ d, o }: { d: Detail; o: Overview }) {
         ))}
       </Facts>
       {(d.conflicts || []).length ? (
-        <>
+        <div data-demo="conflicts" className="grid gap-3">
           <h4 className="m-0 text-[14px] font-semibold text-ink-2">Records that disagree</h4>
           {d.conflicts!.map((x, i) => (
             <div key={i} className="grid gap-0.5 border-l-2 border-warn pl-3">
@@ -131,10 +132,10 @@ function NumbersTab({ d, o }: { d: Detail; o: Overview }) {
               {x.confidence ? <span className="text-[14px] text-ink-2">{cap(x.confidence)} confidence</span> : null}
             </div>
           ))}
-        </>
+        </div>
       ) : null}
       {w.available ? (
-        <div className="grid gap-1">
+        <div data-demo="whatif" className="grid gap-1">
           <label htmlFor="whatif-text" className="text-[14px] font-semibold">Parts arrive in (hours, 0 to 72)</label>
           <input
             id="whatif-text"
@@ -169,7 +170,10 @@ function MessagesTab({ d, o }: { d: Detail; o: Overview }) {
     <>
       <SheetSection title={`To ${d.supplier?.name || 'the supplier'}`}>
         {dr ? (
-          <MailBox subject={dr.subject} body={dr.body} testId="draft-supplier" />
+          <div data-demo="email" className="grid gap-3">
+            <MailBox subject={dr.subject} body={dr.body} testId="draft-supplier" />
+            <ApprovalPreview kind="email" />
+          </div>
         ) : (
           <>
             <p className="m-0 text-ink-2">No request yet.</p>
@@ -192,7 +196,10 @@ function MessagesTab({ d, o }: { d: Detail; o: Overview }) {
       ))}
       {esc ? (
         <SheetSection title={`To ${esc.to_role || 'the approver'}`}>
-          <MailBox subject={esc.subject} body={esc.body} testId="draft-escalation" />
+          <div data-demo="escalation" className="grid gap-3">
+            <MailBox subject={esc.subject} body={esc.body} testId="draft-escalation" />
+            <ApprovalPreview kind="escalation" />
+          </div>
           {supplierApproved && !esc.approved && target !== 'escalation' ? (
             <div><Button size="sm" data-testid="approve-escalation" disabled={launch.busy} onClick={() => ui.startApproval('escalation', 'details')}>Approve escalation…</Button></div>
           ) : null}
@@ -340,7 +347,7 @@ export function DetailsSheet({ d, o, onStartDemo }: { d: Detail; o: Overview; on
     </div>
   );
   return (
-    <Sheet open={ui.sheetOpen} onOpenChange={ui.setSheetOpen} title="Details" footer={footer} returnFocusId={ui.openerId}>
+    <Sheet open={ui.sheetOpen} onOpenChange={ui.setSheetOpen} title="Details" footer={footer} returnFocusId={ui.openerId} modal={!ui.demoOpen}>
       <Tabs value={ui.tab} onValueChange={(v) => ui.setTab(v as TabId)}>
         <TabsList aria-label="Details sections">
           <TabsTrigger value="brief">Brief</TabsTrigger>

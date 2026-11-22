@@ -67,7 +67,7 @@ export function WhatIfControl({ className }: { className?: string }) {
   const w = useWhatIf();
   if (!w.available) return null;
   return (
-    <div className={className ? `grid gap-1 rounded-control bg-brand-tint p-4 ${className}` : 'grid gap-1 rounded-control bg-brand-tint p-4'}>
+    <div data-demo="whatif" className={className ? `grid gap-1 rounded-control bg-brand-tint p-4 ${className}` : 'grid gap-1 rounded-control bg-brand-tint p-4'}>
       <div className="flex items-baseline justify-between gap-2">
         <label htmlFor="whatif-slider" className="text-[14px] text-ink-2">
           Parts arrive

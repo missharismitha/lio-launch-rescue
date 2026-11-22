@@ -1,88 +1,106 @@
 {
-  "voice": "coral",
-  "model": "gpt-4o-mini-tts",
-  "total_ms": 117050,
+  "voice": "Jack Anthony (ElevenLabs sp7QaEHmiNEd5HgrXuOo)",
+  "model": "eleven_v4",
+  "total_ms": 115200,
   "scenes": [
     {
       "id": "problem",
       "selector": "[data-demo=\"problem\"]",
       "sheetTab": null,
       "caption": "The problem",
-      "text": "Sunday, eight p.m., the trucks leave Hamburg with Grand Heist 6. Soony's sheet says the game cards are fine. Our agent read every file and found six thousand eight hundred Standard copies short.",
+      "text": "It's Sunday, eight p.m. Trucks leave Hamburg with the biggest game of the year. Soony's sheet says the cards are fine. They're not. Our agent found six thousand eight hundred copies short.",
       "file": "/audio/demo/01-problem.mp3",
-      "ms": 14500
+      "ms": 11840
     },
     {
       "id": "parts",
       "selector": "[data-demo=\"parts\"]",
       "sheetTab": null,
       "caption": "What is short",
-      "text": "Every copy is a kit of parts. The Collector's box adds a steel case, art book, poster, statue and four lid magnets. Red chips mark the parts that are short, shown with the real pictures from the brief.",
+      "text": "Every copy is a kit. The Collector's edition has eight parts, and the red ones are what's missing: game cards, art books, the statue.",
       "file": "/audio/demo/02-parts.mp3",
-      "ms": 14100
+      "ms": 8640
     },
     {
       "id": "agent",
       "selector": "[data-demo=\"agent\"]",
       "sheetTab": "agent",
       "caption": "The agent at work",
-      "text": "The agent starts by itself. It reads the records, finds conflicts and a supplier hold, compares transport, checks the approval policy and drafts the messages. It can read, compute and draft, but it can never send, pay or book.",
+      "text": "Nobody clicked anything. The agent started on its own. It reads the records, finds conflicts and a supplier hold, compares transport, and drafts the messages. It reads, calculates and drafts. It never sends, pays or books.",
       "file": "/audio/demo/03-agent.mp3",
-      "ms": 15750
+      "ms": 16000
     },
     {
       "id": "map",
       "selector": "[data-demo=\"map\"]",
       "sheetTab": null,
       "caption": "The supply network",
-      "text": "Here is the network: suppliers in Korea, China, India, Poland and the US. Air is solid, sea is dashed. Red markers will miss Sunday.",
+      "text": "Here's the network. Solid lines are air, dashed lines are sea. And the red markers? Shipments that won't make Sunday.",
       "file": "/audio/demo/04-map.mp3",
-      "ms": 11650
+      "ms": 7680
     },
     {
       "id": "transport",
       "selector": "[data-demo=\"transport\"]",
       "sheetTab": null,
       "caption": "Transport options",
-      "text": "For the game cards, no transport mode makes the deadline. Air is four days late. Costs are labelled estimates. So a faster flight is not the answer.",
+      "text": "Can we fly it in? No. Even air is four days late. These costs are estimates, and we say so. A faster flight isn't the answer.",
       "file": "/audio/demo/05-transport.mp3",
-      "ms": 11950
+      "ms": 9360
+    },
+    {
+      "id": "whatif",
+      "selector": "[data-demo=\"whatif\"]",
+      "sheetTab": null,
+      "caption": "What if parts arrive sooner?",
+      "text": "There's also a what-if slider. If the parts land sooner, how many copies still ship? It's a calculation, not a guess.",
+      "file": "/audio/demo/06-whatif.mp3",
+      "ms": 8080
     },
     {
       "id": "decision",
       "selector": "[data-demo=\"decision\"]",
       "sheetTab": null,
       "caption": "The decision",
-      "text": "The answer is Boise: thirty six thousand cards are packed and on hold, because our order and their agreement disagree on delivery terms. That is five times the gap. The approver is Doctor Maren Vogt.",
-      "file": "/audio/demo/06-decision.mp3",
-      "ms": 14350
+      "text": "The answer is Boise. Thirty-six thousand cards are packed and on hold, because our order and their agreement disagree on delivery terms. That's over five times the gap, and it's Doctor Maren Vogt's call.",
+      "file": "/audio/demo/07-decision.mp3",
+      "ms": 13120
     },
     {
-      "id": "approval",
-      "selector": "[data-demo=\"decision\"]",
-      "sheetTab": null,
-      "caption": "Human in charge",
-      "text": "A named person approves, in two steps. The app never sends email: a person sends it from their own mailbox, and the reply comes back as a file for review.",
-      "file": "/audio/demo/07-approval.mp3",
-      "ms": 14050
+      "id": "escalation",
+      "selector": "[data-demo=\"escalation\"]",
+      "sheetTab": "messages",
+      "caption": "Approve the escalation",
+      "text": "Two messages need a human. One is the escalation for Doctor Vogt, with every number checked by code. The agent can't send it. A named person reads it, types their name, and approves. Two steps.",
+      "file": "/audio/demo/08-escalation.mp3",
+      "ms": 13120
+    },
+    {
+      "id": "email",
+      "selector": "[data-demo=\"email\"]",
+      "sheetTab": "messages",
+      "caption": "Approve the email",
+      "text": "The other is the email to Boise. Same rule: a human approves, then sends it from their own inbox. Boise's reply comes back as a file, and a person reviews it before any number changes.",
+      "file": "/audio/demo/09-email.mp3",
+      "ms": 12000
     },
     {
       "id": "tracking",
       "selector": "[data-demo=\"tracking\"]",
       "sheetTab": null,
       "caption": "Launch tracking",
-      "text": "Launch tracking shows the workflow like a parcel: data in, problem found, agent plan, approval, sent, reply. Right now it waits for your approval.",
-      "file": "/audio/demo/08-tracking.mp3",
-      "ms": 11850
+      "text": "You can follow it all like a parcel: data in, problem found, plan, approval, sent, reply. Right now, it's waiting for you.",
+      "file": "/audio/demo/10-tracking.mp3",
+      "ms": 9600
     },
     {
       "id": "close",
       "selector": "[data-demo=\"problem\"]",
       "sheetTab": null,
       "caption": "Launch Control",
-      "text": "Launch Control reads the mess, finds what breaks, and keeps a human in charge. It works for any launch with a fixed date.",
-      "file": "/audio/demo/09-close.mp3",
-      "ms": 8850
+      "text": "That's Launch Control. It reads the mess, finds what breaks, and keeps a human in charge.",
+      "file": "/audio/demo/11-close.mp3",
+      "ms": 5760
     }
   ]
 }

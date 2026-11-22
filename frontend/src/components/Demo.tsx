@@ -196,8 +196,9 @@ export function DemoOverlay({ d }: { d: Detail; o?: unknown }) {
     setDemoScene(scene.id);
 
     const el0 = visible(scene.selector);
+    /* a target inside the Details sheet keeps it open (scene to scene); anything on the page closes it */
     if (!el0 && scene.sheetTab) openSheet(scene.sheetTab as TabId, 'details');
-    else closeSheet();
+    else if (!el0?.closest('[data-testid="details-sheet"]')) closeSheet();
 
     let first = true;
     const measure = () => {
@@ -338,7 +339,9 @@ export function DemoOverlay({ d }: { d: Detail; o?: unknown }) {
       style={{ top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: '0 0 0 9999px rgba(11,31,92,.6)' }}
     />
   ) : null;
-  const shell = 'fixed inset-x-0 bottom-0 z-[71] mx-auto grid max-w-none gap-3 rounded-t-card border border-line bg-white p-4 shadow-sheet sm:inset-x-auto sm:right-6 sm:bottom-3 sm:max-w-md sm:rounded-card';
+  /* the Details sheet fills the right edge, so the player moves to the left while a sheet scene plays */
+  const sheetScene = !!scene?.sheetTab && ui.sheetOpen;
+  const shell = `fixed inset-x-0 bottom-0 z-[71] mx-auto grid max-w-none gap-3 rounded-t-card border border-line bg-white p-4 shadow-sheet sm:inset-x-auto sm:bottom-3 sm:max-w-md sm:rounded-card ${sheetScene ? 'sm:left-6' : 'sm:right-6'}`;
   const note = mismatch ? (
     <p data-testid="demo-mismatch" className="m-0 flex items-start gap-2 rounded-control bg-warn-tint px-3 py-2 text-[13px] leading-5 text-warn">
       <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />

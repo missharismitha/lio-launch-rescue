@@ -11,12 +11,14 @@ interface SheetProps {
   footer?: ReactNode;
   returnFocusId?: string;
   className?: string;
+  /* false while the guided demo plays: no focus trap, no dimmed page, the player stays usable */
+  modal?: boolean;
 }
 
 /* Radix Dialog as a right-hand sheet: focus trapped, Esc closes, focus returns to the opener. */
-export function Sheet({ open, onOpenChange, title, children, footer, returnFocusId, className }: SheetProps) {
+export function Sheet({ open, onOpenChange, title, children, footer, returnFocusId, className, modal = true }: SheetProps) {
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+    <Dialog.Root open={open} onOpenChange={onOpenChange} modal={modal}>
       <Dialog.Portal>
         <Dialog.Overlay className="anim-fade fixed inset-0 z-40 bg-brand-navy/40 print:hidden" />
         <Dialog.Content
@@ -24,7 +26,7 @@ export function Sheet({ open, onOpenChange, title, children, footer, returnFocus
           data-testid="details-sheet"
           onInteractOutside={(e) => {
             /* the guided-demo popover floats above the sheet and must stay clickable */
-            if ((e.target as HTMLElement | null)?.closest?.('[data-demo-ui]')) e.preventDefault();
+            if (!modal || (e.target as HTMLElement | null)?.closest?.('[data-demo-ui]')) e.preventDefault();
           }}
           onCloseAutoFocus={(e) => {
             const el = returnFocusId ? document.getElementById(returnFocusId) : null;
